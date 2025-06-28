@@ -11,5 +11,5 @@
         'views/amazon_seller_account_views.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
 }
