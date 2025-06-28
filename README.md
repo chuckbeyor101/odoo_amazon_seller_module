@@ -7,4 +7,3 @@ seller accounts. Each account stores the following credentials:
 - **Client Secret**
 - **Refresh Token**
 - **Seller ID**
-
