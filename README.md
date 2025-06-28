@@ -7,7 +7,3 @@ seller accounts. Each account stores the following credentials:
 - **Client Secret**
 - **Refresh Token**
 - **Seller ID**
-
-After installing the module, open **Settings** and look in the left menu
-for **Amazon Seller**. Choose **Accounts** from there to add or edit your
-seller credentials.
