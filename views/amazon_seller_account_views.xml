@@ -1,0 +1,39 @@
+<odoo>
+    <record id="view_amazon_seller_account_form" model="ir.ui.view">
+        <field name="name">amazon.seller.account.form</field>
+        <field name="model">amazon.seller.account</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Seller Account">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="app_id"/>
+                        <field name="client_secret"/>
+                        <field name="refresh_token"/>
+                        <field name="seller_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_amazon_seller_account_tree" model="ir.ui.view">
+        <field name="name">amazon.seller.account.tree</field>
+        <field name="model">amazon.seller.account</field>
+        <field name="arch" type="xml">
+            <list string="Amazon Seller Accounts">
+                <field name="name"/>
+                <field name="seller_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_amazon_seller_account" model="ir.actions.act_window">
+        <field name="name">Amazon Seller Accounts</field>
+        <field name="res_model">amazon.seller.account</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_amazon_seller_root" name="Amazon Seller" parent="base.menu_custom" sequence="10"/>
+    <menuitem id="menu_amazon_seller_account" name="Accounts" parent="menu_amazon_seller_root" action="action_amazon_seller_account"/>
+</odoo>
