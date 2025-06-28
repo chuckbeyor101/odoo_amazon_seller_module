@@ -8,4 +8,3 @@ seller accounts. Each account stores the following credentials:
 - **Refresh Token**
 - **Seller ID**
 
-
