@@ -35,7 +35,6 @@
     </record>
 
 
-    <menuitem id="menu_amazon_seller_root" name="Amazon Seller" parent="base.menu_custom" sequence="10"/>
-
+    <menuitem id="menu_amazon_seller_root" name="Amazon Seller" sequence="10"/>
     <menuitem id="menu_amazon_seller_account" name="Accounts" parent="menu_amazon_seller_root" action="action_amazon_seller_account"/>
 </odoo>
