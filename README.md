@@ -8,4 +8,4 @@ seller accounts. Each account stores the following credentials:
 - **Refresh Token**
 - **Seller ID**
 
-Accounts can be configured from the **Settings** menu under *Amazon Seller*.
+
