@@ -38,11 +38,14 @@ class AmazonFbaInventoryLedger(models.Model):
     def cron_fetch_fba_inventory_ledger(self):
         """Cron job to fetch FBA inventory ledger data for all accounts."""
         accounts = self.env['amazon.seller.account'].search([])
+        _logger.info('Starting FBA ledger cron job for %s account(s)', len(accounts))
         for account in accounts:
             try:
+                _logger.info('Fetching FBA ledger for account %s', account.name)
                 self._fetch_ledger_for_account(account)
             except Exception as e:
                 _logger.error('Failed to fetch ledger for %s: %s', account.name, e)
+        _logger.info('FBA ledger cron job complete')
         return True
 
     def _fetch_ledger_for_account(self, account):
@@ -59,6 +62,7 @@ class AmazonFbaInventoryLedger(models.Model):
         marketplace = Marketplaces.US
         if account.marketplace:
             marketplace = Marketplaces.__dict__.get(account.marketplace, Marketplaces.US)
+        _logger.info('Using marketplace %s for account %s', marketplace, account.name)
 
         credentials = dict(
             refresh_token=account.refresh_token,
@@ -69,17 +73,20 @@ class AmazonFbaInventoryLedger(models.Model):
         reports = Reports(credentials=credentials, marketplace=marketplace)
 
         # Request the inventory ledger report
+        _logger.info('Requesting inventory ledger report for account %s', account.name)
         report = reports.create_report(reportType='GET_LEDGER_DETAIL_VIEW_DATA').payload
         report_id = report.get('reportId')
         if not report_id:
             _logger.error('No report id returned for account %s', account.name)
             return
+        _logger.info('Created ledger report %s for account %s', report_id, account.name)
 
         # Poll the report status until processing is complete and a document is available
         report_document_id = None
         for _ in range(20):
             result = reports.get_report(reportId=report_id)
             status = result.payload.get('processingStatus')
+            _logger.debug('Report %s status %s', report_id, status)
             if status == 'DONE':
                 report_document_id = result.payload.get('reportDocumentId')
                 break
@@ -91,11 +98,13 @@ class AmazonFbaInventoryLedger(models.Model):
         if not report_document_id:
             _logger.error('No reportDocumentId for report %s', report_id)
             return
+        _logger.info('Report %s completed, document %s', report_id, report_document_id)
 
         # Download the completed report and process its contents
         document_result = reports.get_report_document(report_document_id, download=True)
         # The API returns the report document as a decoded string when download=True
         lines = document_result.payload['document'].splitlines()
+        _logger.info('Downloaded %s line(s) from inventory ledger report', len(lines))
 
         headers = []
         for idx, line in enumerate(lines):
