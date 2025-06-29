@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_amazon_seller_account,amazon.seller.account,model_amazon_seller_account,base.group_system,1,1,1,1
 
+access_amazon_fba_inventory_ledger,amazon.fba.inventory.ledger,model_amazon_fba_inventory_ledger,base.group_system,1,1,1,1
+
