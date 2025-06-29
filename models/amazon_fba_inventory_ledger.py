@@ -1,6 +1,8 @@
 from odoo import models, fields, api
 import logging
 import time
+import requests
+import gzip
 
 _logger = logging.getLogger(__name__)
 
@@ -117,14 +119,19 @@ class AmazonFbaInventoryLedger(models.Model):
         _logger.info('Report %s completed, document %s', report_id, report_document_id)
 
         # Download the completed report and process its contents
-        document_result = reports.get_report_document(report_document_id, download=True)
-        # The API returns the report document as a decoded string when download=True
-        lines = document_result.payload['document'].splitlines()
+        document_result = reports.get_report_document(report_document_id)
+        url = document_result.payload.get('url')
+        compression = document_result.payload.get('compressionAlgorithm')
+        resp = requests.get(url)
+        content = resp.content
+        if compression == 'GZIP':
+            content = gzip.decompress(content)
+        lines = content.decode('cp1252').splitlines()
         _logger.info('Downloaded %s line(s) from inventory ledger report', len(lines))
 
         headers = []
         for idx, line in enumerate(lines):
-            values = [v.strip() for v in line.split(',')]
+            values = [v.strip() for v in line.split('\t')]
             if idx == 0:
                 headers = values
                 continue
