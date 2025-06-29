@@ -2,7 +2,7 @@ import subprocess
 import sys
 import logging
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 from .utils import amazon_utils
@@ -80,7 +80,6 @@ class AmazonSellerAccount(models.Model):
                             if part.get('marketplace').get('countryCode') == rec.marketplace:
                                 if part.get('participation').get('isParticipating'):
                                     logger.info(f'Connection successful for {rec.name} in {rec.marketplace} marketplace.')
-                                    # TODO Show success message to user
                                     found_match = True
                                     break
 
@@ -96,4 +95,25 @@ class AmazonSellerAccount(models.Model):
                         f'Error verifying connection for {rec.name} in {rec.marketplace} marketplace \n\n\n\n{e}'
                     )
 
-        return True
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Success'),
+                'message': _('Connection verified successfully.'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+
+    def verify_and_save(self):
+        """Verify connection and persist the record if the credentials succeed."""
+        self.ensure_one()
+        result = self.verify_connection()
+        vals = self._convert_to_write(self._cache)
+        if self._origin and self._origin.id:
+            self._origin.write(vals)
+        else:
+            self._origin = self.create(vals)
+        result['params']['message'] = _('Connection verified and saved.')
+        return result
