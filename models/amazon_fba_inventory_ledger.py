@@ -94,7 +94,9 @@ class AmazonFbaInventoryLedger(models.Model):
 
         # Download the completed report and process its contents
         document_result = reports.get_report_document(report_document_id, download=True)
-        lines = document_result.payload['document'].decode('utf-8').splitlines()
+        # The API returns the report document as a decoded string when download=True
+        lines = document_result.payload['document'].splitlines()
+
         headers = []
         for idx, line in enumerate(lines):
             values = [v.strip() for v in line.split(',')]
