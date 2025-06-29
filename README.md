@@ -13,4 +13,4 @@ The module attempts to install the `python-amazon-sp-api` package during install
 After configuring an account, use the *Verify Connection* button to test your credentials.
 You can also click *Verify & Save* to validate the connection and persist the record in one step.
 
-The module also includes an **FBA Inventory Ledger** accessible from the *FBA* menu. A scheduled task runs every 30 minutes to download FBA ledger details from Amazon and store them, preventing duplicate transactions.
+The module also includes an **FBA Inventory Ledger** accessible from the *FBA* menu. A scheduled task runs every 30 minutes to download FBA ledger details from Amazon and store them, preventing duplicate transactions. The ledger download now polls the report status until Amazon marks it as finished before retrieving the document.
