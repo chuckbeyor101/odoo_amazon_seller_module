@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 import logging
+import time
 
 _logger = logging.getLogger(__name__)
 
@@ -66,19 +67,35 @@ class AmazonFbaInventoryLedger(models.Model):
         )
 
         reports = Reports(credentials=credentials, marketplace=marketplace)
+
+        # Request the inventory ledger report
         report = reports.create_report(reportType='GET_LEDGER_DETAIL_VIEW_DATA').payload
         report_id = report.get('reportId')
         if not report_id:
             _logger.error('No report id returned for account %s', account.name)
             return
 
-        report_result = reports.get_report(reportId=report_id)
-        if 'document' not in report_result.payload:
-            _logger.error('No document for report %s', report_id)
+        # Poll the report status until processing is complete and a document is available
+        report_document_id = None
+        for _ in range(20):
+            result = reports.get_report(reportId=report_id)
+            status = result.payload.get('processingStatus')
+            if status == 'DONE':
+                report_document_id = result.payload.get('reportDocumentId')
+                break
+            if status in ('CANCELLED', 'FATAL'):
+                _logger.error('Report %s ended with status %s', report_id, status)
+                return
+            time.sleep(15)
+
+        if not report_document_id:
+            _logger.error('No reportDocumentId for report %s', report_id)
             return
 
-        document = reports.get_report_document(report_result.payload['document']['documentId'])
-        lines = document.payload.decode('utf-8').splitlines()
+        # Download the completed report and process its contents
+        document_result = reports.get_report_document(report_document_id, download=True)
+        # The API returns the report document as a decoded string when download=True
+        lines = document_result.payload['document'].splitlines()
         headers = []
         for idx, line in enumerate(lines):
             values = [v.strip() for v in line.split(',')]
