@@ -3,6 +3,7 @@ import logging
 import time
 import requests
 import gzip
+from datetime import datetime, timedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -92,7 +93,21 @@ class AmazonFbaInventoryLedger(models.Model):
 
         # Request the inventory ledger report
         _logger.info('Requesting inventory ledger report for account %s', account.name)
-        report = reports.create_report(reportType='GET_LEDGER_SUMMARY_VIEW_DATA').payload
+
+        latest_entry = self.search([
+            ('account_id', '=', account.id),
+        ], order='ledger_date desc', limit=1)
+        if latest_entry and latest_entry.ledger_date:
+            start_dt = datetime.combine(latest_entry.ledger_date, datetime.min.time())
+        else:
+            start_dt = datetime.utcnow() - timedelta(days=30)
+        end_dt = datetime.utcnow()
+
+        report = reports.create_report(
+            reportType='GET_LEDGER_SUMMARY_VIEW_DATA',
+            dataStartTime=start_dt.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            dataEndTime=end_dt.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        ).payload
         report_id = report.get('reportId')
         if not report_id:
             _logger.error('No report id returned for account %s', account.name)

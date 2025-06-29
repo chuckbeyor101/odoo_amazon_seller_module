@@ -15,4 +15,6 @@ You can also click *Verify & Save* to validate the connection and persist the re
 
 The module also includes an **FBA Inventory Ledger** accessible from the *FBA* menu. A scheduled task runs every 30 minutes to download FBA ledger details from Amazon and store them, preventing duplicate transactions. The ledger download now polls the report status until Amazon marks it as finished before retrieving the document. The ledger report uses the `GET_LEDGER_SUMMARY_VIEW_DATA` report type and is returned as a tab‑separated file encoded with CP1252.
 
+For reliable results the ledger request explicitly sets `dataStartTime` and `dataEndTime` in ISO 8601 format. It starts 30 days prior to the most recent stored entry and ends at the time of the request.
+
 Ledger entries mirror the columns returned in the summary report including balances and counts for each FNSKU, date and location. Duplicate entries are avoided by enforcing uniqueness on the combination of account, date, FNSKU and location.
