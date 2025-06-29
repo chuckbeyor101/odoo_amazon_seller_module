@@ -1,3 +1,5 @@
+"""Utility helpers for interfacing with python-amazon-sp-api."""
+
 from sp_api.base import Marketplaces
 
 def sp_marketplace_mapper(marketplace: str):

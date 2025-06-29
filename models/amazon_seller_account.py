@@ -7,18 +7,27 @@ from odoo.exceptions import ValidationError
 
 from .utils import amazon_utils
 
+# Token caches are imported so they can be cleared before verifying
+# connection details. This prevents a cached token from succeeding
+# when a user has updated the credentials with invalid values.
+
 logger = logging.getLogger(__name__)
 
 try:
     from sp_api.api import Sellers
     from sp_api.base import Marketplaces, SellingApiException
+    from sp_api.auth.access_token_client import cache as sp_api_token_cache, grantless_cache as sp_api_grantless_cache
 except Exception:
     Sellers = None
     Marketplaces = None
     SellingApiException = Exception
+    sp_api_token_cache = None
+    sp_api_grantless_cache = None
 
 
 class AmazonSellerAccount(models.Model):
+    """Model storing Amazon credentials for a single seller account."""
+
     _name = 'amazon.seller.account'
     _description = 'Amazon Seller Account'
 
@@ -38,6 +47,12 @@ class AmazonSellerAccount(models.Model):
         """Verify the account credentials using python-amazon-sp-api."""
         if Sellers is None:
             raise ValidationError('python-amazon-sp-api is not installed.')
+
+        # Clear any cached tokens so that new credentials are always used
+        if sp_api_token_cache is not None:
+            sp_api_token_cache.clear()
+        if sp_api_grantless_cache is not None:
+            sp_api_grantless_cache.clear()
         for rec in self:
 
             if rec.marketplace and isinstance(rec.marketplace, str):

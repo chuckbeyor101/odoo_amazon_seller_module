@@ -1,3 +1,4 @@
+# Expose all model classes to Odoo
 from . import models
 
 def _install_python_dependencies(cr, registry):
