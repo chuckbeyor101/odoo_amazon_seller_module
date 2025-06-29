@@ -1,0 +1,12 @@
+<odoo>
+    <record id="ir_cron_fetch_fba_inventory_ledger" model="ir.cron">
+        <field name="name">Fetch FBA Inventory Ledger</field>
+        <field name="model_id" ref="model_amazon_fba_inventory_ledger"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_fetch_fba_inventory_ledger()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+    </record>
+</odoo>
+

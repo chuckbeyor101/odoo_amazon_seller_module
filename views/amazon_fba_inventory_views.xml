@@ -1,0 +1,48 @@
+<odoo>
+    <record id="view_amazon_fba_inventory_ledger_tree" model="ir.ui.view">
+        <field name="name">amazon.fba.inventory.ledger.tree</field>
+        <field name="model">amazon.fba.inventory.ledger</field>
+        <field name="arch" type="xml">
+            <tree string="FBA Inventory Ledger">
+                <field name="transaction_date"/>
+                <field name="transaction_type"/>
+                <field name="seller_sku"/>
+                <field name="quantity"/>
+                <field name="account_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_amazon_fba_inventory_ledger_form" model="ir.ui.view">
+        <field name="name">amazon.fba.inventory.ledger.form</field>
+        <field name="model">amazon.fba.inventory.ledger</field>
+        <field name="arch" type="xml">
+            <form string="FBA Inventory Ledger">
+                <sheet>
+                    <group>
+                        <field name="account_id"/>
+                        <field name="transaction_id"/>
+                        <field name="transaction_date"/>
+                        <field name="transaction_type"/>
+                        <field name="seller_sku"/>
+                        <field name="fnsku"/>
+                        <field name="asin"/>
+                        <field name="fulfillment_center_id"/>
+                        <field name="quantity"/>
+                        <field name="disposition"/>
+                        <field name="event_description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_amazon_fba_inventory_ledger" model="ir.actions.act_window">
+        <field name="name">Inventory Ledger</field>
+        <field name="res_model">amazon.fba.inventory.ledger</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_amazon_fba_root" name="FBA" parent="menu_amazon_seller_root" sequence="20"/>
+    <menuitem id="menu_amazon_fba_inventory_ledger" name="Inventory Ledger" parent="menu_amazon_fba_root" action="action_amazon_fba_inventory_ledger"/>
+</odoo>
