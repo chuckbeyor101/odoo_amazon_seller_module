@@ -13,6 +13,7 @@
                         <field name="seller_id"/>
                         <field name="marketplace"/>
                         <button string="Verify Connection" type="object" name="verify_connection" class="oe_highlight"/>
+                        <button string="Verify &amp; Save" type="object" name="verify_and_save" class="oe_highlight"/>
                     </group>
                 </sheet>
             </form>
