@@ -2,40 +2,54 @@
     <record id="view_amazon_fba_inventory_ledger_list" model="ir.ui.view">
         <field name="name">amazon.fba.inventory.ledger.list</field>
         <field name="model">amazon.fba.inventory.ledger</field>
-        <field name="arch" type="xml">
-            <list string="FBA Inventory Ledger">
-                <field name="transaction_date"/>
-                <field name="transaction_type"/>
-                <field name="seller_sku"/>
-                <field name="quantity"/>
-                <field name="account_id"/>
-            </list>
-        </field>
-    </record>
+            <field name="arch" type="xml">
+                <list string="FBA Inventory Ledger">
+                    <field name="ledger_date"/>
+                    <field name="fnsku"/>
+                    <field name="msku"/>
+                    <field name="location"/>
+                    <field name="ending_balance"/>
+                    <field name="account_id"/>
+                </list>
+            </field>
+        </record>
 
     <record id="view_amazon_fba_inventory_ledger_form" model="ir.ui.view">
         <field name="name">amazon.fba.inventory.ledger.form</field>
         <field name="model">amazon.fba.inventory.ledger</field>
-        <field name="arch" type="xml">
-            <form string="FBA Inventory Ledger">
-                <sheet>
-                    <group>
-                        <field name="account_id"/>
-                        <field name="transaction_id"/>
-                        <field name="transaction_date"/>
-                        <field name="transaction_type"/>
-                        <field name="seller_sku"/>
-                        <field name="fnsku"/>
-                        <field name="asin"/>
-                        <field name="fulfillment_center_id"/>
-                        <field name="quantity"/>
-                        <field name="disposition"/>
-                        <field name="event_description"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
+            <field name="arch" type="xml">
+                <form string="FBA Inventory Ledger">
+                    <sheet>
+                        <group>
+                            <field name="account_id"/>
+                            <field name="ledger_date"/>
+                            <field name="fnsku"/>
+                            <field name="asin"/>
+                            <field name="msku"/>
+                            <field name="title"/>
+                            <field name="disposition"/>
+                            <field name="location"/>
+                        </group>
+                        <group string="Quantities">
+                            <field name="starting_balance"/>
+                            <field name="in_transit_between_warehouses"/>
+                            <field name="receipts"/>
+                            <field name="customer_shipments"/>
+                            <field name="customer_returns"/>
+                            <field name="vendor_returns"/>
+                            <field name="warehouse_transfer"/>
+                            <field name="found"/>
+                            <field name="lost"/>
+                            <field name="damaged"/>
+                            <field name="disposed"/>
+                            <field name="other_events"/>
+                            <field name="ending_balance"/>
+                            <field name="unknown_events"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
 
     <record id="action_amazon_fba_inventory_ledger" model="ir.actions.act_window">
         <field name="name">Inventory Ledger</field>
