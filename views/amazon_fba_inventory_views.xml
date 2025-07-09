@@ -7,8 +7,9 @@
                     <field name="ledger_date"/>
                     <field name="fnsku"/>
                     <field name="msku"/>
-                    <field name="location"/>
-                    <field name="ending_balance"/>
+                    <field name="event_type"/>
+                    <field name="quantity"/>
+                    <field name="fulfillment_center"/>
                     <field name="account_id"/>
                 </list>
             </field>
@@ -27,24 +28,15 @@
                             <field name="asin"/>
                             <field name="msku"/>
                             <field name="title"/>
+                            <field name="event_type"/>
+                            <field name="reference_id"/>
+                            <field name="quantity"/>
+                            <field name="fulfillment_center"/>
                             <field name="disposition"/>
-                            <field name="location"/>
-                        </group>
-                        <group string="Quantities">
-                            <field name="starting_balance"/>
-                            <field name="in_transit_between_warehouses"/>
-                            <field name="receipts"/>
-                            <field name="customer_shipments"/>
-                            <field name="customer_returns"/>
-                            <field name="vendor_returns"/>
-                            <field name="warehouse_transfer"/>
-                            <field name="found"/>
-                            <field name="lost"/>
-                            <field name="damaged"/>
-                            <field name="disposed"/>
-                            <field name="other_events"/>
-                            <field name="ending_balance"/>
-                            <field name="unknown_events"/>
+                            <field name="reason"/>
+                            <field name="country"/>
+                            <field name="reconciled_quantity"/>
+                            <field name="unreconciled_quantity"/>
                         </group>
                     </sheet>
                 </form>

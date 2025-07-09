@@ -1,18 +1,10 @@
 from odoo import models, fields, api
 import logging
-import time
-import requests
-import gzip
 from datetime import datetime, timedelta
 
-_logger = logging.getLogger(__name__)
+from .utils import amazon_utils
 
-try:
-    from sp_api.api import Reports
-    from sp_api.base import Marketplaces
-except Exception:
-    Reports = None
-    Marketplaces = None
+_logger = logging.getLogger(__name__)
 
 
 class AmazonFbaInventoryLedger(models.Model):
@@ -27,28 +19,21 @@ class AmazonFbaInventoryLedger(models.Model):
     asin = fields.Char(string='ASIN')
     msku = fields.Char(string='MSKU')
     title = fields.Char(string='Title')
+    event_type = fields.Char(string='Event Type')
+    reference_id = fields.Char(string='Reference ID')
+    quantity = fields.Float(string='Quantity')
+    fulfillment_center = fields.Char(string='Fulfillment Center')
     disposition = fields.Char(string='Disposition')
-    starting_balance = fields.Float(string='Starting Warehouse Balance')
-    in_transit_between_warehouses = fields.Float(string='In Transit Between Warehouses')
-    receipts = fields.Float(string='Receipts')
-    customer_shipments = fields.Float(string='Customer Shipments')
-    customer_returns = fields.Float(string='Customer Returns')
-    vendor_returns = fields.Float(string='Vendor Returns')
-    warehouse_transfer = fields.Float(string='Warehouse Transfer In/Out')
-    found = fields.Float(string='Found')
-    lost = fields.Float(string='Lost')
-    damaged = fields.Float(string='Damaged')
-    disposed = fields.Float(string='Disposed')
-    other_events = fields.Float(string='Other Events')
-    ending_balance = fields.Float(string='Ending Warehouse Balance')
-    unknown_events = fields.Float(string='Unknown Events')
-    location = fields.Char(string='Location')
+    reason = fields.Char(string='Reason')
+    country = fields.Char(string='Country')
+    reconciled_quantity = fields.Float(string='Reconciled Quantity')
+    unreconciled_quantity = fields.Float(string='Unreconciled Quantity')
 
     _sql_constraints = [
         (
             'unique_entry',
-            'unique(account_id, ledger_date, fnsku, location)',
-            'Ledger entry already exists for this account, date, FNSKU and location.'
+            'unique(account_id, ledger_date, fnsku, event_type, reference_id, fulfillment_center)',
+            'Ledger entry already exists for this account, date, FNSKU and reference.'
         )
     ]
 
@@ -67,32 +52,13 @@ class AmazonFbaInventoryLedger(models.Model):
         return True
 
     def _fetch_ledger_for_account(self, account):
-        """Fetches ledger entries for a single seller account.
+        """Fetch ledger entries for a single seller account using amazon_utils."""
 
-        This implementation uses the GET_LEDGER_SUMMARY_VIEW_DATA report from
-        the Amazon Selling Partner API. The method will create the report,
-        download the results and store them in this model while preventing
-        duplicates.
-        """
-        if Reports is None:
-            _logger.error('python-amazon-sp-api is not installed.')
-            return
-
-        marketplace = Marketplaces.US
-        if account.marketplace:
-            marketplace = Marketplaces.__dict__.get(account.marketplace, Marketplaces.US)
-        _logger.info('Using marketplace %s for account %s', marketplace, account.name)
-
-        credentials = dict(
-            refresh_token=account.refresh_token,
-            lwa_app_id=account.app_id,
-            lwa_client_secret=account.client_secret
-        )
-
-        reports = Reports(credentials=credentials, marketplace=marketplace)
-
-        # Request the inventory ledger report
-        _logger.info('Requesting inventory ledger report for account %s', account.name)
+        credentials = {
+            'refresh_token': account.refresh_token,
+            'lwa_app_id': account.app_id,
+            'lwa_client_secret': account.client_secret,
+        }
 
         latest_entry = self.search([
             ('account_id', '=', account.id),
@@ -103,64 +69,32 @@ class AmazonFbaInventoryLedger(models.Model):
             start_dt = datetime.utcnow() - timedelta(days=30)
         end_dt = datetime.utcnow()
 
-        report = reports.create_report(
-            reportType='GET_LEDGER_SUMMARY_VIEW_DATA',
-            dataStartTime=start_dt.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            dataEndTime=end_dt.strftime('%Y-%m-%dT%H:%M:%SZ'),
-        ).payload
-        report_id = report.get('reportId')
-        if not report_id:
-            _logger.error('No report id returned for account %s', account.name)
-            return
-        _logger.info('Created ledger report %s for account %s', report_id, account.name)
+        transactions = amazon_utils.get_fba_inventory_ledger_details(
+            marketplace=account.marketplace,
+            credentials=credentials,
+            dataStartTime=start_dt.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
+            dataEndTime=end_dt.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
+        ) or []
 
-        # Poll the report status until processing is complete and a document is available
-        report_document_id = None
-        for _ in range(20):
-            result = reports.get_report(reportId=report_id)
-            status = result.payload.get('processingStatus')
-            _logger.debug('Report %s status %s', report_id, status)
-            if status == 'DONE':
-                report_document_id = result.payload.get('reportDocumentId')
-                break
-            if status in ('CANCELLED', 'FATAL'):
-                _logger.error('Report %s ended with status %s', report_id, status)
-                return
-            time.sleep(15)
+        _logger.info('Fetched %s transactions for account %s', len(transactions), account.name)
 
-        if not report_document_id:
-            _logger.error('No reportDocumentId for report %s', report_id)
-            return
-        _logger.info('Report %s completed, document %s', report_id, report_document_id)
-
-        # Download the completed report and process its contents
-        document_result = reports.get_report_document(report_document_id)
-        url = document_result.payload.get('url')
-        compression = document_result.payload.get('compressionAlgorithm')
-        resp = requests.get(url)
-        content = resp.content
-        if compression == 'GZIP':
-            content = gzip.decompress(content)
-        lines = content.decode('cp1252').splitlines()
-        _logger.info('Downloaded %s line(s) from inventory ledger report', len(lines))
-
-        headers = []
-        for idx, line in enumerate(lines):
-            values = [v.strip() for v in line.split('\t')]
-            if idx == 0:
-                headers = values
-                continue
-            data = dict(zip(headers, values))
+        for data in transactions:
             ledger_date = data.get('Date')
             fnsku = data.get('FNSKU')
-            location = data.get('Location')
             if not (ledger_date and fnsku):
                 continue
+
+            event_type = data.get('EventType') or data.get('Event Type')
+            reference_id = data.get('ReferenceID') or data.get('Reference ID')
+            fulfillment_center = data.get('FulfillmentCenter') or data.get('Fulfillment Center')
+
             existing = self.search([
                 ('account_id', '=', account.id),
                 ('ledger_date', '=', ledger_date),
                 ('fnsku', '=', fnsku),
-                ('location', '=', location),
+                ('event_type', '=', event_type),
+                ('reference_id', '=', reference_id),
+                ('fulfillment_center', '=', fulfillment_center),
             ], limit=1)
             if existing:
                 continue
@@ -178,21 +112,14 @@ class AmazonFbaInventoryLedger(models.Model):
                 'asin': data.get('ASIN'),
                 'msku': data.get('MSKU'),
                 'title': data.get('Title'),
+                'event_type': event_type,
+                'reference_id': reference_id,
+                'quantity': to_float(data.get('Quantity')),
+                'fulfillment_center': fulfillment_center,
                 'disposition': data.get('Disposition'),
-                'starting_balance': to_float(data.get('StartingWarehouseBalance')),
-                'in_transit_between_warehouses': to_float(data.get('InTransitBetweenWarehouses')),
-                'receipts': to_float(data.get('Receipts')),
-                'customer_shipments': to_float(data.get('CustomerShipments')),
-                'customer_returns': to_float(data.get('CustomerReturns')),
-                'vendor_returns': to_float(data.get('VendorReturns')),
-                'warehouse_transfer': to_float(data.get('WarehouseTransferIn/Out')),
-                'found': to_float(data.get('Found')),
-                'lost': to_float(data.get('Lost')),
-                'damaged': to_float(data.get('Damaged')),
-                'disposed': to_float(data.get('Disposed')),
-                'other_events': to_float(data.get('OtherEvents')),
-                'ending_balance': to_float(data.get('EndingWarehouseBalance')),
-                'unknown_events': to_float(data.get('UnknownEvents')),
-                'location': location,
+                'reason': data.get('Reason'),
+                'country': data.get('Country'),
+                'reconciled_quantity': to_float(data.get('ReconciledQuantity') or data.get('Reconciled Quantity')),
+                'unreconciled_quantity': to_float(data.get('UnreconciledQuantity') or data.get('Unreconciled Quantity')),
             })
 
