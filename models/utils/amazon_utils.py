@@ -1,4 +1,6 @@
 """Utility helpers for interfacing with python-amazon-sp-api."""
+import csv
+
 from sp_api.base import Marketplaces
 from datetime import datetime, timezone, timedelta
 from sp_api.api import Reports
@@ -7,7 +9,7 @@ import time
 import requests
 import logging
 import gzip
-from io import BytesIO
+from io import BytesIO, StringIO
 
 
 def sp_marketplace_mapper(marketplace: str):
@@ -55,7 +57,7 @@ def get_fba_inventory_ledger_summary(marketplace: str, credentials, aggregatedBy
     wait_for_report = True
 
     if debug:
-        logging.info(f"Getting Open Listings Feed. Waiting for report to process...")
+        logging.info(f"Getting Inventory Ledger Summary Feed. Waiting for report to process...")
         logging.info(f"Report ID: {report_id}")
 
     while wait_for_report:
@@ -72,7 +74,8 @@ def get_fba_inventory_ledger_summary(marketplace: str, credentials, aggregatedBy
             # Convert the tab separated string to a list of dictionaries
             lines = decompressed.split('\n')
             headers = lines[0].split('\t')
-            report_data = [dict(zip(headers, row.split('\t'))) for row in lines[1:] if row.strip()]
+            reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
+            report_data = [dict(row) for row in reader]
 
         elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
             if debug:
@@ -115,7 +118,7 @@ def get_fba_inventory_ledger_details(marketplace: str, credentials, dataStartTim
     wait_for_report = True
 
     if debug:
-        logging.info(f"Getting Open Listings Feed. Waiting for report to process...")
+        logging.info(f"Getting Inventory Ledger Details Feed. Waiting for report to process...")
         logging.info(f"Report ID: {report_id}")
 
     while wait_for_report:
@@ -132,7 +135,8 @@ def get_fba_inventory_ledger_details(marketplace: str, credentials, dataStartTim
             # Convert the tab separated string to a list of dictionaries
             lines = decompressed.split('\n')
             headers = lines[0].split('\t')
-            report_data = [dict(zip(headers, row.split('\t'))) for row in lines[1:] if row.strip()]
+            reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
+            report_data = [dict(row) for row in reader]
 
         elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
             if debug:

@@ -72,8 +72,7 @@ class AmazonFbaInventoryLedger(models.Model):
         transactions = amazon_utils.get_fba_inventory_ledger_details(
             marketplace=account.marketplace,
             credentials=credentials,
-            dataStartTime=start_dt.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
-            dataEndTime=end_dt.strftime('%Y-%m-%dT%H:%M:%S+00:00'),
+            debug=True
         ) or []
 
         _logger.info('Fetched %s transactions for account %s', len(transactions), account.name)
@@ -82,7 +81,20 @@ class AmazonFbaInventoryLedger(models.Model):
             ledger_date = data.get('Date')
             fnsku = data.get('FNSKU')
             if not (ledger_date and fnsku):
+                _logger.warning('Skipping entry with missing date or FNSKU: %s', data)
                 continue
+
+            # Convert "MM/DD/YYYY" strings to ISO format for Odoo
+            # try:
+            #     ledger_date_dt = datetime.strptime(ledger_date, '%Y-%m-%d')
+            # except Exception:
+            try:
+                ledger_date_dt = datetime.strptime(ledger_date, '%m/%d/%Y')
+            except Exception:
+                _logger.debug('Unable to parse date %s', ledger_date)
+                continue
+
+            ledger_date = ledger_date_dt.date().isoformat()
 
             event_type = data.get('EventType') or data.get('Event Type')
             reference_id = data.get('ReferenceID') or data.get('Reference ID')
@@ -96,7 +108,9 @@ class AmazonFbaInventoryLedger(models.Model):
                 ('reference_id', '=', reference_id),
                 ('fulfillment_center', '=', fulfillment_center),
             ], limit=1)
+
             if existing:
+                _logger.info('Skipping existing entry for %s on %s', fnsku, ledger_date)
                 continue
 
             def to_float(val):
@@ -122,4 +136,8 @@ class AmazonFbaInventoryLedger(models.Model):
                 'reconciled_quantity': to_float(data.get('ReconciledQuantity') or data.get('Reconciled Quantity')),
                 'unreconciled_quantity': to_float(data.get('UnreconciledQuantity') or data.get('Unreconciled Quantity')),
             })
+
+            _logger.info('Created ledger entry for %s on %s', fnsku, ledger_date)
+
+        _logger.info('Completed fetching ledger for account %s', account.name)
 
