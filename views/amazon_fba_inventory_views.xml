@@ -11,6 +11,7 @@
                     <field name="quantity"/>
                     <field name="fulfillment_center"/>
                     <field name="account_id"/>
+                    <field name="stock_move_id"/>
                 </list>
             </field>
         </record>
@@ -37,6 +38,7 @@
                             <field name="country"/>
                             <field name="reconciled_quantity"/>
                             <field name="unreconciled_quantity"/>
+                            <field name="stock_move_id"/>
                         </group>
                     </sheet>
                 </form>

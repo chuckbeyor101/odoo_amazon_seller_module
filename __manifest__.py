@@ -6,7 +6,7 @@
     'description': 'Stores multiple Amazon seller accounts and credentials.',
     'category': 'Sales',
     'author': 'Your Company',
-    'depends': ['base'],
+    'depends': ['base', 'stock'],
     'data': [
         'security/ir.model.access.csv',
         'views/amazon_seller_account_views.xml',
