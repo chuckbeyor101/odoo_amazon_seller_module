@@ -28,6 +28,7 @@ class AmazonFbaInventoryLedger(models.Model):
     country = fields.Char(string='Country')
     reconciled_quantity = fields.Float(string='Reconciled Quantity')
     unreconciled_quantity = fields.Float(string='Unreconciled Quantity')
+    stock_move_id = fields.Many2one('stock.move', string='Stock Move', readonly=True)
 
     _sql_constraints = [
         (
@@ -140,4 +141,84 @@ class AmazonFbaInventoryLedger(models.Model):
             _logger.info('Created ledger entry for %s on %s', fnsku, ledger_date)
 
         _logger.info('Completed fetching ledger for account %s', account.name)
+
+    @api.model
+    def _ensure_fba_warehouses(self):
+        """Ensure FBA warehouses used for ledger transactions exist."""
+        Warehouse = self.env['stock.warehouse']
+        company = self.env.company
+
+        inbound = Warehouse.search([('code', '=', 'FBAIN'), ('company_id', '=', company.id)], limit=1)
+        if not inbound:
+            inbound = Warehouse.create({
+                'name': 'FBA Inbound',
+                'code': 'FBAIN',
+                'company_id': company.id,
+            })
+
+        transfer = Warehouse.search([('code', '=', 'FBATR'), ('company_id', '=', company.id)], limit=1)
+        if not transfer:
+            transfer = Warehouse.create({
+                'name': 'FBA Transfer',
+                'code': 'FBATR',
+                'company_id': company.id,
+            })
+
+        return inbound, transfer
+
+    @api.model
+    def cron_create_inventory_transactions(self):
+        """Create Odoo stock moves from unprocessed ledger entries."""
+        inbound_wh, transfer_wh = self._ensure_fba_warehouses()
+
+        unprocessed = self.search([('stock_move_id', '=', False)])
+        Product = self.env['product.product']
+        Template = self.env['product.template']
+
+        for entry in unprocessed:
+            product = Product.search([('amazon_msku', '=', entry.msku)], limit=1)
+            if not product:
+                product = Product.search([('default_code', '=', entry.fnsku)], limit=1)
+            if not product:
+                template = Template.create({
+                    'name': entry.title or entry.asin or entry.msku or entry.fnsku,
+                    'type': 'product',
+                })
+                product = template.product_variant_id
+                product.write({
+                    'default_code': entry.fnsku,
+                    'amazon_asin': entry.asin,
+                    'amazon_msku': entry.msku,
+                })
+
+            qty = abs(entry.quantity)
+            if qty <= 0:
+                continue
+
+            if entry.event_type == 'Receipts':
+                src_loc = inbound_wh.lot_stock_id.id
+                dest_loc = transfer_wh.lot_stock_id.id
+            elif entry.event_type == 'WhseTransfer':
+                if entry.quantity > 0:
+                    src_loc = inbound_wh.lot_stock_id.id
+                    dest_loc = transfer_wh.lot_stock_id.id
+                else:
+                    src_loc = transfer_wh.lot_stock_id.id
+                    dest_loc = inbound_wh.lot_stock_id.id
+            else:
+                continue
+
+            move = self.env['stock.move'].create({
+                'name': f'FBA {entry.event_type}',
+                'product_id': product.id,
+                'product_uom': product.uom_id.id,
+                'product_uom_qty': qty,
+                'location_id': src_loc,
+                'location_dest_id': dest_loc,
+            })
+            move._action_confirm()
+            move._action_done()
+            entry.stock_move_id = move.id
+
+        return True
 

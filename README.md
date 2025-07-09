@@ -18,3 +18,12 @@ The module also includes an **FBA Inventory Ledger** accessible from the *FBA* m
 For reliable results the ledger request explicitly sets `dataStartTime` and `dataEndTime` in ISO 8601 format. It starts 30 days prior to the most recent stored entry and ends at the time of the request.
 
 Ledger entries mirror the columns returned in the detail report including transaction type, quantity and fulfillment center. Duplicate entries are avoided by enforcing uniqueness on the combination of account, date, FNSKU, event type, reference ID and fulfillment center.
+
+Another scheduled task converts ledger entries into standard Odoo stock moves. It creates two warehouses automatically:
+
+* **FBA Inbound** (`FBAIN`) – used as the source location for `Receipts` events.
+* **FBA Transfer** (`FBATR`) – used for `WhseTransfer` movements.
+
+Unprocessed ledger lines generate stock moves between these warehouses based on the event type. Created moves are linked back to the ledger entry so the job can safely run repeatedly without creating duplicates.
+
+The cron job also checks for a product matching each ledger line's MSKU. If none exists, a new storable product is created automatically using the FNSKU as the internal reference. The product stores the ASIN and MSKU so further ledger imports reuse the same item.
