@@ -211,6 +211,12 @@ class AmazonFbaInventoryLedger(models.Model):
                 if 'type' in Template._fields:
                     vals['type'] = product_type
 
+                # Ensure new products track inventory only by quantity.
+                # The `tracking` field controls lot/serial number tracking on
+                # product templates. Setting it to "none" keeps standard
+                # quantity-based stock management.
+                vals['tracking'] = 'none'
+
                 template = Template.create(vals)
 
                 product = template.product_variant_id
