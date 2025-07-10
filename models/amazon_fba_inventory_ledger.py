@@ -150,11 +150,14 @@ class AmazonFbaInventoryLedger(models.Model):
 
         warehouse = Warehouse.search([('code', '=', 'FBA'), ('company_id', '=', company.id)], limit=1)
         if not warehouse:
+            _logger.info('Creating FBA warehouse for company %s', company.name)
             warehouse = Warehouse.create({
                 'name': 'FBA',
                 'code': 'FBA',
                 'company_id': company.id,
             })
+        else:
+            _logger.debug('Using existing FBA warehouse %s', warehouse.display_name)
 
         return warehouse
 
@@ -164,6 +167,7 @@ class AmazonFbaInventoryLedger(models.Model):
         warehouse = self._ensure_fba_warehouse()
 
         unprocessed = self.search([('stock_move_id', '=', False)])
+        _logger.info('Processing %s unprocessed FBA ledger entries', len(unprocessed))
         Product = self.env['product.product']
         Template = self.env['product.template']
 
@@ -198,9 +202,11 @@ class AmazonFbaInventoryLedger(models.Model):
                     'amazon_asin': entry.asin,
 
                 })
-
+                _logger.info('Created product %s for FNSKU %s', product.display_name, entry.fnsku)
+            
             qty = abs(entry.quantity)
             if qty <= 0:
+                _logger.debug('Skipping entry %s with zero quantity', entry.id)
                 continue
 
             if entry.event_type == 'Receipts':
@@ -214,6 +220,7 @@ class AmazonFbaInventoryLedger(models.Model):
                     src_loc = warehouse.lot_stock_id.id
                     dest_loc = warehouse.wh_input_stock_loc_id.id
             else:
+                _logger.debug('Skipping entry %s with unsupported event type %s', entry.id, entry.event_type)
                 continue
 
             move = self.env['stock.move'].create({
@@ -227,6 +234,8 @@ class AmazonFbaInventoryLedger(models.Model):
             move._action_confirm()
             move._action_done()
             entry.stock_move_id = move.id
+            _logger.info('Created stock move %s for ledger entry %s', move.name, entry.id)
 
+        _logger.info('Finished processing FBA ledger entries')
         return True
 
