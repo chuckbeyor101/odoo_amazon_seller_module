@@ -168,14 +168,29 @@ class AmazonFbaInventoryLedger(models.Model):
 
         unprocessed = self.search([('stock_move_id', '=', False)])
         _logger.info('Processing %s unprocessed FBA ledger entries', len(unprocessed))
+
+        move_count = 0
+        skip_count = 0
+
         Product = self.env['product.product']
         Template = self.env['product.template']
 
         for entry in unprocessed:
 
+            _logger.debug(
+                'Evaluating ledger entry %s type=%s qty=%s',
+                entry.id,
+                entry.event_type,
+                entry.quantity,
+            )
+
             product = Product.search([('amazon_asin', '=', entry.asin)], limit=1)
+            if product:
+                _logger.debug('Using product %s for ASIN %s', product.display_name, entry.asin)
             if not product:
                 product = Product.search([('default_code', '=', entry.fnsku)], limit=1)
+                if product:
+                    _logger.debug('Found product %s by FNSKU %s', product.display_name, entry.fnsku)
             if not product:
                 vals = {
                     'name': entry.title or entry.asin or entry.fnsku,
@@ -207,6 +222,9 @@ class AmazonFbaInventoryLedger(models.Model):
             qty = abs(entry.quantity)
             if qty <= 0:
                 _logger.debug('Skipping entry %s with zero quantity', entry.id)
+
+                skip_count += 1
+
                 continue
 
             if entry.event_type == 'Receipts':
@@ -221,6 +239,9 @@ class AmazonFbaInventoryLedger(models.Model):
                     dest_loc = warehouse.wh_input_stock_loc_id.id
             else:
                 _logger.debug('Skipping entry %s with unsupported event type %s', entry.id, entry.event_type)
+
+                skip_count += 1
+
                 continue
 
             move = self.env['stock.move'].create({
@@ -234,8 +255,15 @@ class AmazonFbaInventoryLedger(models.Model):
             move._action_confirm()
             move._action_done()
             entry.stock_move_id = move.id
+
+            move_count += 1
             _logger.info('Created stock move %s for ledger entry %s', move.name, entry.id)
 
-        _logger.info('Finished processing FBA ledger entries')
+        _logger.info(
+            'Finished processing FBA ledger entries: %s moves created, %s entries skipped',
+            move_count,
+            skip_count,
+        )
+
         return True
 
