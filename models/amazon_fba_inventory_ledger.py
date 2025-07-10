@@ -176,6 +176,7 @@ class AmazonFbaInventoryLedger(models.Model):
         Template = self.env['product.template']
 
         for entry in unprocessed:
+
             product = Product.search([('amazon_asin', '=', entry.asin)], limit=1)
             if not product:
                 product = Product.search([('default_code', '=', entry.fnsku)], limit=1)
@@ -187,10 +188,12 @@ class AmazonFbaInventoryLedger(models.Model):
                 if 'detailed_type' in Template._fields:
                     vals['detailed_type'] = 'product'
                 template = Template.create(vals)
+
                 product = template.product_variant_id
                 product.write({
                     'default_code': entry.fnsku,
                     'amazon_asin': entry.asin,
+
                 })
 
             qty = abs(entry.quantity)
