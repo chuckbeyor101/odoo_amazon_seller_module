@@ -171,6 +171,8 @@ class AmazonFbaInventoryLedger(models.Model):
 
         move_count = 0
         skip_count = 0
+        skip_zero = 0
+        skip_unsupported = 0
 
         Product = self.env['product.product']
         Template = self.env['product.template']
@@ -221,9 +223,10 @@ class AmazonFbaInventoryLedger(models.Model):
             
             qty = abs(entry.quantity)
             if qty <= 0:
-                _logger.debug('Skipping entry %s with zero quantity', entry.id)
 
+                _logger.info('Skipping entry %s with zero quantity', entry.id)
                 skip_count += 1
+                skip_zero += 1
 
                 continue
 
@@ -238,9 +241,10 @@ class AmazonFbaInventoryLedger(models.Model):
                     src_loc = warehouse.lot_stock_id.id
                     dest_loc = warehouse.wh_input_stock_loc_id.id
             else:
-                _logger.debug('Skipping entry %s with unsupported event type %s', entry.id, entry.event_type)
 
+                _logger.info('Skipping entry %s with unsupported event type %s', entry.id, entry.event_type)
                 skip_count += 1
+                skip_unsupported += 1
 
                 continue
 
@@ -260,9 +264,12 @@ class AmazonFbaInventoryLedger(models.Model):
             _logger.info('Created stock move %s for ledger entry %s', move.name, entry.id)
 
         _logger.info(
-            'Finished processing FBA ledger entries: %s moves created, %s entries skipped',
+
+            'Finished processing FBA ledger entries: %s moves created, %s entries skipped (%s zero quantity, %s unsupported)',
             move_count,
             skip_count,
+            skip_zero,
+            skip_unsupported,
         )
 
         return True
