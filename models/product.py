@@ -4,7 +4,13 @@ class ProductProduct(models.Model):
     _inherit = 'product.product'
 
     amazon_asin = fields.Char(string='ASIN')
-    amazon_msku = fields.Char(string='MSKU')
+
+
     _sql_constraints = [
-        ('amazon_msku_unique', 'unique(amazon_msku)', 'A product with this MSKU already exists.'),
+        (
+            'amazon_asin_unique',
+            'unique(amazon_asin)',
+            'A product with this ASIN already exists.',
+        ),
+
     ]
