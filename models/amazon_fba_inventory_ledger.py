@@ -143,33 +143,25 @@ class AmazonFbaInventoryLedger(models.Model):
         _logger.info('Completed fetching ledger for account %s', account.name)
 
     @api.model
-    def _ensure_fba_warehouses(self):
-        """Ensure FBA warehouses used for ledger transactions exist."""
+    def _ensure_fba_warehouse(self):
+        """Ensure a single FBA warehouse exists and return it."""
         Warehouse = self.env['stock.warehouse']
         company = self.env.company
 
-        inbound = Warehouse.search([('code', '=', 'FBAIN'), ('company_id', '=', company.id)], limit=1)
-        if not inbound:
-            inbound = Warehouse.create({
-                'name': 'FBA Inbound',
-                'code': 'FBAIN',
+        warehouse = Warehouse.search([('code', '=', 'FBA'), ('company_id', '=', company.id)], limit=1)
+        if not warehouse:
+            warehouse = Warehouse.create({
+                'name': 'FBA',
+                'code': 'FBA',
                 'company_id': company.id,
             })
 
-        transfer = Warehouse.search([('code', '=', 'FBATR'), ('company_id', '=', company.id)], limit=1)
-        if not transfer:
-            transfer = Warehouse.create({
-                'name': 'FBA Transfer',
-                'code': 'FBATR',
-                'company_id': company.id,
-            })
-
-        return inbound, transfer
+        return warehouse
 
     @api.model
     def cron_create_inventory_transactions(self):
         """Create Odoo stock moves from unprocessed ledger entries."""
-        inbound_wh, transfer_wh = self._ensure_fba_warehouses()
+        warehouse = self._ensure_fba_warehouse()
 
         unprocessed = self.search([('stock_move_id', '=', False)])
         Product = self.env['product.product']
@@ -212,15 +204,15 @@ class AmazonFbaInventoryLedger(models.Model):
                 continue
 
             if entry.event_type == 'Receipts':
-                src_loc = inbound_wh.lot_stock_id.id
-                dest_loc = transfer_wh.lot_stock_id.id
+                src_loc = warehouse.wh_input_stock_loc_id.id
+                dest_loc = warehouse.lot_stock_id.id
             elif entry.event_type == 'WhseTransfer':
                 if entry.quantity > 0:
-                    src_loc = inbound_wh.lot_stock_id.id
-                    dest_loc = transfer_wh.lot_stock_id.id
+                    src_loc = warehouse.wh_input_stock_loc_id.id
+                    dest_loc = warehouse.lot_stock_id.id
                 else:
-                    src_loc = transfer_wh.lot_stock_id.id
-                    dest_loc = inbound_wh.lot_stock_id.id
+                    src_loc = warehouse.lot_stock_id.id
+                    dest_loc = warehouse.wh_input_stock_loc_id.id
             else:
                 continue
 

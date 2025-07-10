@@ -19,12 +19,7 @@ For reliable results the ledger request explicitly sets `dataStartTime` and `dat
 
 Ledger entries mirror the columns returned in the detail report including transaction type, quantity and fulfillment center. Duplicate entries are avoided by enforcing uniqueness on the combination of account, date, FNSKU, event type, reference ID and fulfillment center.
 
-Another scheduled task converts ledger entries into standard Odoo stock moves. It creates two warehouses automatically:
-
-* **FBA Inbound** (`FBAIN`) – used as the source location for `Receipts` events.
-* **FBA Transfer** (`FBATR`) – used for `WhseTransfer` movements.
-
-Unprocessed ledger lines generate stock moves between these warehouses based on the event type. Created moves are linked back to the ledger entry so the job can safely run repeatedly without creating duplicates.
+Another scheduled task converts ledger entries into standard Odoo stock moves. It creates a single **FBA** warehouse automatically. The warehouse's receipt location is used as the source for `Receipts` events while the internal stock location handles `WhseTransfer` movements. Unprocessed ledger lines generate stock moves between these locations based on the event type. Created moves are linked back to the ledger entry so the job can safely run repeatedly without creating duplicates.
 
 
 The cron job looks for a product with the same ASIN as each ledger line. If one doesn't exist, a new storable product is created automatically using the FNSKU as the internal reference. The product stores the ASIN so subsequent ledger imports reuse the same item.
