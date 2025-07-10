@@ -183,10 +183,21 @@ class AmazonFbaInventoryLedger(models.Model):
             if not product:
                 vals = {
                     'name': entry.title or entry.asin or entry.fnsku,
-                    'type': 'product',
                 }
+
+                # Determine the correct stockable type based on the installed Odoo version
+                type_field = Template._fields.get('detailed_type') or Template._fields.get('type')
+                product_type = 'product'
+                if type_field and hasattr(type_field, 'selection'):
+                    valid = [t[0] for t in type_field.selection]
+                    if product_type not in valid:
+                        product_type = 'storable' if 'storable' in valid else valid[0]
+
                 if 'detailed_type' in Template._fields:
-                    vals['detailed_type'] = 'product'
+                    vals['detailed_type'] = product_type
+                if 'type' in Template._fields:
+                    vals['type'] = product_type
+
                 template = Template.create(vals)
 
                 product = template.product_variant_id
