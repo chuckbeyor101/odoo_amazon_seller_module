@@ -1,0 +1,84 @@
+<!-- #################################################################################################################### -->
+<!-- Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.                                 -->
+<!-- is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.                      -->
+<!-- To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/                        -->
+<!--                                                                                                                  -->
+<!-- Unless required by applicable law or agreed to in writing, software                                             -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,                                               -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                        -->
+<!-- See the License for the specific language governing permissions and                                             -->
+<!-- limitations under the License.                                                                                  -->
+<!--                                                                                                                  -->
+<!-- GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module                                               -->
+<!-- #################################################################################################################### -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Overview Form View -->
+    <record id="amazon_overview_form_view" model="ir.ui.view">
+        <field name="name">amazon.overview.form</field>
+        <field name="model">amazon.overview</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Seller Overview" create="false" edit="false" delete="false">
+                <header></header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Amazon Seller Overview</h1>
+                    </div>
+                    
+                    <!-- Unmapped Addresses Notification -->
+                    <div class="o_warning_notification" invisible="not has_unmapped_addresses" style="border: 1px solid #f0ad4e; border-left: 4px solid #f0ad4e; background-color: #fcf8e3; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                        <div class="row">
+                            <div class="col-md-1">
+                                <i class="fa fa-exclamation-triangle fa-2x text-warning" title="Warning: Unmapped Addresses"></i>
+                            </div>
+                            <div class="col-md-11">
+                                <h4 style="color: #8a6d3b; margin-top: 0;">Action Required: Unmapped Addresses</h4>
+                                <p class="mb-2">
+                                    You have <strong><field name="unmapped_addresses" readonly="1" class="text-danger"/></strong> address(es) that are not mapped to warehouse locations.
+                                    <br/>
+                                    <small style="color: #8a6d3b;">Unmapped addresses cannot be used for inventory management until they are assigned to warehouse locations.</small>
+                                </p>
+                                <hr style="border-color: #f0ad4e;"/>
+                                <p class="mb-0">
+                                    <a href="/web#action=amazon_seller.action_amazon_address_map_unmapped" class="btn btn-warning btn-sm" role="button">
+                                        <i class="fa fa-map-marker" title="Map Marker"></i> Configure Address Mappings
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <group>
+                        <group name="accounts" string="Account Summary">
+                            <field name="total_accounts" readonly="1"/>
+                        </group>
+                        <group name="mappings" string="Configuration">
+                            <field name="total_address_mappings" readonly="1"/>
+                            <field name="unmapped_addresses" readonly="1" invisible="unmapped_addresses == 0"/>
+                            <field name="has_unmapped_addresses" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <div class="oe_clear"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Overview Action -->
+    <record id="amazon_overview_action" model="ir.actions.act_window">
+        <field name="name">Amazon Seller Overview</field>
+        <field name="res_model">amazon.overview</field>
+        <field name="view_mode">form</field>
+        <field name="target">main</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Welcome to Amazon Seller Overview
+            </p>
+            <p>
+                This dashboard provides a quick overview of your Amazon seller integration status.
+            </p>
+        </field>
+    </record>
+</odoo>

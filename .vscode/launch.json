@@ -1,0 +1,29 @@
+// This is a Visual Studio Code launch configuration file for debugging an Odoo instance. 
+// When working at the module level
+// The expected directory you should be in is /odoo/custom_addons/your_module_name
+
+{
+    "version": "0.1.0",
+    "configurations": [
+        {
+            "name": "Run odoo-bin with arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/../../odoo-bin",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/../../virtual/Scripts/python.exe"
+            },
+            "args": [
+                "-r", "administrator", // Database user
+                "--addons-path=${workspaceFolder}/../../addons,${workspaceFolder}/../../custom_addons",  // Add custom addons path
+                "-d", "test_db_007", // DB name. This can be changed if you want a fresh start
+                "-u", "amazon_seller", // Module to auto reload (Whatever module your working on)
+                "--dev", "xml", // Reloads XML files on changes
+                "--limit-time-cpu", "24000", // Allow longer running cron job operations
+                "--limit-time-real", "48000", // Allow longer running cron job operations
+                "--without-demo", "True" // This prevents the database from being loaded with demo data
+            ]
+        }
+    ]
+}

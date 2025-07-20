@@ -1,0 +1,42 @@
+<!-- #################################################################################################################### -->
+<!-- Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.                                 -->
+<!-- is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.                      -->
+<!-- To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/                        -->
+<!--                                                                                                                  -->
+<!-- Unless required by applicable law or agreed to in writing, software                                             -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,                                               -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                        -->
+<!-- See the License for the specific language governing permissions and                                             -->
+<!-- limitations under the License.                                                                                  -->
+<!--                                                                                                                  -->
+<!-- GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module                                               -->
+<!-- #################################################################################################################### -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Sale Order Form View -->
+        <record id="view_order_form_amazon" model="ir.ui.view">
+            <field name="name">sale.order.form.amazon</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='client_order_ref']" position="after">
+                    <field name="amazon_seller_order_id"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Inherit Sale Order List View -->
+        <record id="view_quotation_list_amazon" model="ir.ui.view">
+            <field name="name">sale.order.list.amazon</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_quotation_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="amazon_seller_order_id" optional="hide"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,151 @@
+<!-- #################################################################################################################### -->
+<!-- Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.                                 -->
+<!-- is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.                      -->
+<!-- To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/                        -->
+<!--                                                                                                                  -->
+<!-- Unless required by applicable law or agreed to in writing, software                                             -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,                                               -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                        -->
+<!-- See the License for the specific language governing permissions and                                             -->
+<!-- limitations under the License.                                                                                  -->
+<!--                                                                                                                  -->
+<!-- GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module                                               -->
+<!-- #################################################################################################################### -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="amazon_seller_account_tree_view" model="ir.ui.view">
+        <field name="name">amazon.seller.account.tree</field>
+        <field name="model">amazon.seller.account</field>
+        <field name="arch" type="xml">
+            <list string="Amazon Seller Accounts">
+                <field name="name"/>
+                <field name="seller_id"/>
+                <field name="marketplace"/>
+                <field name="app_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="amazon_seller_account_form_view" model="ir.ui.view">
+        <field name="name">amazon.seller.account.form</field>
+        <field name="model">amazon.seller.account</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Seller Account">
+                <header>
+                    <button name="verify_connection" 
+                            string="Test Connection" 
+                            type="object" 
+                            class="btn-primary"
+                            help="Test the connection with the current credentials"/>
+                    <button name="verify_and_save" 
+                            string="Test and Save" 
+                            type="object" 
+                            class="btn-success"
+                            help="Test connection and save if successful"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group name="basic_info" string="Basic Information">
+                            <field name="name" placeholder="e.g., Main US Account"/>
+                            <field name="marketplace"/>
+                            <field name="seller_id" placeholder="Your Amazon Seller ID"/>
+                        </group>
+                        <group name="api_credentials" string="API Credentials">
+                            <field name="app_id" placeholder="Your SP-API App ID"/>
+                            <field name="client_secret" password="True" placeholder="Your Client Secret"/>
+                            <field name="refresh_token" password="True" placeholder="Your Refresh Token"/>
+                        </group>
+                    </group>
+                    <group>
+                    <group name="listing_settings" string="Listing Settings">
+                            <field name="import_products"/>
+                            <field name="import_product_price"/>
+                        </group>
+                        <group name="" string="">
+
+                        </group>
+                        <group name="fba_inventory_settings" string="FBA Inventory Settings">
+                            <field name="import_fba_inventory"/>
+                            <field name="import_fba_inbound_shipments"/>
+                        </group>
+                        <group name="awd_inventory_settings" string="AWD Inventory Settings">
+                            <field name="import_awd_inventory"/>
+                            <field name="import_awd_inbound_shipments"/>
+                        </group>
+                        <group name="fba_order_settings" string="FBA Order Settings">
+                            <field name="import_fba_orders"/>
+                            <field name="consolidated_fba_order_customer"/>
+                            <field name="import_fba_order_tax"/>
+                            <field name="import_fba_order_shipping"/>
+                            <field name="invoice_fba_orders"/>
+                        </group>
+                        <group name="fbm_order_settings" string="FBM Order Settings">
+                            <!-- <field name="import_fbm_orders"/> -->
+                        </group>
+                        
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="amazon_seller_account_search_view" model="ir.ui.view">
+        <field name="name">amazon.seller.account.search</field>
+        <field name="model">amazon.seller.account</field>
+        <field name="arch" type="xml">
+            <search string="Amazon Seller Accounts">
+                <field name="name" string="Account Name" filter_domain="[('name', 'ilike', self)]"/>
+                <field name="seller_id" string="Seller ID" filter_domain="[('seller_id', 'ilike', self)]"/>
+                <field name="marketplace" string="Marketplace"/>
+                <group expand="0" string="Group By">
+                    <filter string="Marketplace" name="group_marketplace" context="{'group_by': 'marketplace'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="amazon_seller_account_action" model="ir.actions.act_window">
+        <field name="name">Amazon Seller Accounts</field>
+        <field name="res_model">amazon.seller.account</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="amazon_seller_account_search_view"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Amazon Seller Account
+            </p>
+            <p>
+                Configure your Amazon SP-API credentials to integrate with Amazon services.
+                You'll need your App ID, Client Secret, Refresh Token, and Seller ID from your Amazon Developer account.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="amazon_seller_main_menu" 
+              name="Amazon Seller" 
+              web_icon="amazon_seller,static/description/icon.png" 
+              sequence="50"/>
+
+    <menuitem id="amazon_seller_overview_menu" 
+              name="Overview" 
+              parent="amazon_seller_main_menu" 
+              action="amazon_overview_action"
+              sequence="10"/>
+
+    <menuitem id="amazon_seller_account_menu" 
+              name="Account Configuration" 
+              parent="amazon_seller_main_menu" 
+              action="amazon_seller_account_action" 
+              sequence="20"/>
+
+    <menuitem id="amazon_seller_address_menu" 
+              name="Address Mapping" 
+              parent="amazon_seller_main_menu" 
+              action="action_amazon_address_map"
+              sequence="30"/>
+</odoo>

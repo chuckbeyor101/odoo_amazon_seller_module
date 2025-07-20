@@ -1,0 +1,34 @@
+# ######################################################################################################################
+# Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.
+# is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
+# To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module
+# ######################################################################################################################
+
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_amazon_seller_account_user,Amazon Seller Account User,model_amazon_seller_account,base.group_user,1,0,0,0
+access_amazon_seller_account_manager,Amazon Seller Account Manager,model_amazon_seller_account,stock.group_stock_manager,1,1,1,1
+access_amazon_overview,Amazon Overview,model_amazon_overview,base.group_user,1,0,0,0
+access_amazon_msku_user,Amazon MSKU User,model_amazon_msku,base.group_user,1,0,0,0
+access_amazon_msku_manager,Amazon MSKU Manager,model_amazon_msku,stock.group_stock_manager,1,1,1,1
+access_amazon_fnsku_user,Amazon FNSKU User,model_amazon_fnsku,base.group_user,1,0,0,0
+access_amazon_fnsku_manager,Amazon FNSKU Manager,model_amazon_fnsku,stock.group_stock_manager,1,1,1,1
+access_amazon_import_products_user,Amazon Import Products User,model_amazon_import_products,base.group_user,1,0,0,0
+access_amazon_import_products_manager,Amazon Import Products Manager,model_amazon_import_products,stock.group_stock_manager,1,1,1,1
+access_amazon_awd_inventory,Amazon AWD Inventory,model_amazon_awd_inventory,base.group_user,1,0,0,0
+access_amazon_fba_inventory,Amazon FBA Inventory,model_amazon_fba_inventory,base.group_user,1,0,0,0
+access_amazon_orders_user,Amazon Orders User,model_amazon_orders,base.group_user,1,0,0,0
+access_amazon_orders_manager,Amazon Orders Manager,model_amazon_orders,stock.group_stock_manager,1,1,1,1
+access_amazon_address_map_user,Amazon Address Map User,model_amazon_address_map,base.group_user,1,0,0,0
+access_amazon_address_map_manager,Amazon Address Map Manager,model_amazon_address_map,stock.group_stock_manager,1,1,1,1
+access_amazon_awd_inbound_user,Amazon AWD Inbound User,model_amazon_awd_inbound,base.group_user,1,0,0,0
+access_amazon_awd_inbound_manager,Amazon AWD Inbound Manager,model_amazon_awd_inbound,stock.group_stock_manager,1,1,1,1
+access_amazon_fba_inbound_user,Amazon FBA Inbound User,model_amazon_fba_inbound,base.group_user,1,0,0,0
+access_amazon_fba_inbound_manager,Amazon FBA Inbound Manager,model_amazon_fba_inbound,stock.group_stock_manager,1,1,1,1

@@ -1,0 +1,68 @@
+<!-- #################################################################################################################### -->
+<!-- Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.                                 -->
+<!-- is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.                      -->
+<!-- To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/                        -->
+<!--                                                                                                                  -->
+<!-- Unless required by applicable law or agreed to in writing, software                                             -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,                                               -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                        -->
+<!-- See the License for the specific language governing permissions and                                             -->
+<!-- limitations under the License.                                                                                  -->
+<!--                                                                                                                  -->
+<!-- GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module                                               -->
+<!-- #################################################################################################################### -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Add Amazon fields to Product Template form view -->
+        <record id="product_template_form_view_amazon" model="ir.ui.view">
+            <field name="name">product.template.form.amazon</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_form_view"/>
+            <field name="arch" type="xml">
+                <notebook position="inside">
+                    <page string="Amazon" name="amazon">
+                        <group>
+                            <group name="amazon_identification">
+                                <field name="amazon_asin" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Amazon SKUs" name="amazon_skus" col="2">
+                            <group name="msku_group" string="MSKUs">
+                                <field name="amazon_msku_display" readonly="1"/>
+                                <field name="amazon_msku_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="name"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group name="fnsku_group" string="FNSKUs">
+                                <field name="amazon_fnsku_display" readonly="1"/>
+                                <field name="amazon_fnsku_ids" readonly="1" nolabel="1">
+                                    <list>
+                                        <field name="name"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </group>
+                    </page>
+                </notebook>
+            </field>
+        </record>
+
+        <!-- Add Amazon fields to Product Template tree view -->
+        <record id="product_template_tree_view_amazon" model="ir.ui.view">
+            <field name="name">product.template.tree.amazon</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_tree_view"/>
+            <field name="arch" type="xml">
+                <field name="list_price" position="after">
+                    <field name="amazon_asin" optional="hide"/>
+                    <field name="amazon_msku_display" optional="show"/>
+                    <field name="amazon_fnsku_display" optional="hide"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>
