@@ -166,8 +166,6 @@ class AmazonSellerAccount(models.Model):
                     if participation.payload:
                         for part in participation.payload:
 
-                            logger.info(participation.payload)
-
                             if part.get('marketplace').get('countryCode') == rec.marketplace:
                                 if part.get('participation').get('isParticipating'):
                                     logger.info(f'Connection successful for {rec.name} in {rec.marketplace} marketplace.')
