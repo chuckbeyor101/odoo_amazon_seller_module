@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!-- #################################################################################################################### -->
 <!-- Amazon Seller Odoo Module Copyright (c) 2025 by Charles L Beyor and Beyotek Inc.                                 -->
 <!-- is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.                      -->
@@ -11,8 +12,6 @@
 <!--                                                                                                                  -->
 <!-- GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module                                               -->
 <!-- #################################################################################################################### -->
-
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Overview Form View -->
     <record id="amazon_overview_form_view" model="ir.ui.view">
