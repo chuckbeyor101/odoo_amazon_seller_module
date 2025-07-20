@@ -9,7 +9,7 @@ This module integrates Amazon Seller Central with Odoo, providing functionality 
 - Python 3.8 or later
 - pip package manager
 - Odoo Inventory module must be installed
-- Odoo Sales module must be installed
+- Odoo Sales module must be installed if importing orders
 
 ### Steps
 
