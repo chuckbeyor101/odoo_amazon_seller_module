@@ -134,7 +134,7 @@
         <!-- Menu Item -->
         <menuitem id="amazon_seller_address_menu" 
                   name="Address Mapping" 
-                  parent="amazon_seller.amazon_seller_main_menu" 
+                  parent="amazon_seller_main_menu" 
                   action="action_amazon_address_map"
                   sequence="30"/>
 
