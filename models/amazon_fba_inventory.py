@@ -27,6 +27,78 @@ class AmazonFBAInventory(models.Model):
     _description = 'Amazon FBA Inventory'
     _auto = False  # Don't create a database table for this model, since it doesn't store data directly
 
+    @api.model
+    def cron_fba_inventory_sync(self):
+        amz_seller_accounts = self.env['amazon.seller.account'].search([('import_fba_inventory', '=', True)])
+        _logger.info('Starting Amazon FBA inventory sync cron job for %s account(s) with FBA import enabled', len(amz_seller_accounts))
+        self.get_fba_warehouse() # Initialize FBA warehouse and stock locations
+        
+        for amz_account in amz_seller_accounts:
+            try:
+                _logger.info('Importing FBA inventory for account: %s', amz_account.name)
+                self._update_account_fba_inventory(amz_account)
+
+            except Exception as e:
+                _logger.error('Error importing FBA inventory for account %s: %s', amz_account.name, str(e))
+                _logger.error(traceback.format_exc())
+                raise ValidationError(f'Failed to import FBA inventory for account {amz_account.name}: {str(e)} \n{traceback.format_exc()}')
+
+
+    @api.model
+    def _update_account_fba_inventory(self, amz_account):
+        # Get all products
+        product_list = self.env['product.template'].search([])
+
+        if not product_list:
+            _logger.warning('No products found for account %s', amz_account.name)
+            return
+        
+        _logger.info('Found %s products for account %s', len(product_list), amz_account.name)
+
+        fba_wh, fba_inbound_loc, fba_stock_loc, fba_reserved_loc, fba_researching_loc, fba_unfulfillable_loc = self.get_fba_warehouse()
+
+        for product in product_list:
+            # Get FBA inventory for each product by summing each msku's quantities
+            amazon_msku_list = product.amazon_msku_ids
+
+            if not amazon_msku_list:
+                _logger.debug('No Amazon MSKUs found for product: %s', product.name)
+                continue
+
+            total_fulfillable_quantity = 0
+            total_inbound_quantity = 0
+            total_reserved_quantity = 0
+            total_researching_quantity = 0
+            total_unfulfillable_quantity = 0
+            total_future_supply_quantity = 0
+
+            for amazon_msku in amazon_msku_list:
+                fba_inventory = amazon_utils.get_fba_inventory_summary_by_sku(amazon_msku.name, amz_account)
+
+                if not fba_inventory:
+                    _logger.debug('No FBA inventory found for MSKU: %s', amazon_msku.name)
+                    continue
+
+                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundWorkingQuantity', 0)
+                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundShippedQuantity', 0)
+                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundReceivingQuantity', 0)
+
+                total_fulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('fulfillableQuantity', 0)
+                total_reserved_quantity += fba_inventory.get('inventoryDetails',{}).get('reservedQuantity', {}).get('totalReservedQuantity', 0)
+                total_researching_quantity += fba_inventory.get('inventoryDetails',{}).get('researchingQuantity', {}).get('totalResearchingQuantity', 0)
+                total_unfulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('unfulfillableQuantity', {}).get('totalUnfulfillableQuantity', 0)
+                # total_future_supply_quantity += fba_inventory.get('inventoryDetails',{}).get('futureSupplyQuantity', 0)
+
+            # Adjust the inventory in Odoo
+            self.env['stock.quant'].set_available_quantity(product, fba_inbound_loc, total_inbound_quantity, "FBA Inventory Sync (Inbound):")
+            self.env['stock.quant'].set_available_quantity(product, fba_stock_loc, total_fulfillable_quantity, "FBA Inventory Sync (Stock):")
+            self.env['stock.quant'].set_available_quantity(product, fba_reserved_loc, total_reserved_quantity, "FBA Inventory Sync (Reserved):")
+            self.env['stock.quant'].set_available_quantity(product, fba_researching_loc, total_researching_quantity, "FBA Inventory Sync (Researching):")
+            self.env['stock.quant'].set_available_quantity(product, fba_unfulfillable_loc, total_unfulfillable_quantity, "FBA Inventory Sync (Unfulfillable):")
+
+            #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities
+
+
     def get_fba_warehouse(self):
         """
         Ensure the FBA warehouse and necessary stock locations exist.
@@ -140,72 +212,3 @@ class AmazonFBAInventory(models.Model):
             _logger.debug('Using existing Unfulfillable stock location %s', unfulfillable_loc.display_name)
 
         return warehouse, inbound_loc, stock_loc, reserved_loc, researching_loc, unfulfillable_loc
-
-    @api.model
-    def cron_fba_inventory_sync(self):
-        amz_seller_accounts = self.env['amazon.seller.account'].search([('import_fba_inventory', '=', True)])
-        _logger.info('Starting Amazon FBA inventory sync cron job for %s account(s) with FBA import enabled', len(amz_seller_accounts))
-        for amz_account in amz_seller_accounts:
-            try:
-                _logger.info('Importing FBA inventory for account: %s', amz_account.name)
-                self._update_account_fba_inventory(amz_account)
-
-            except Exception as e:
-                _logger.error('Error importing FBA inventory for account %s: %s', amz_account.name, str(e))
-                _logger.error(traceback.format_exc())
-                raise ValidationError(f'Failed to import FBA inventory for account {amz_account.name}: {str(e)} \n{traceback.format_exc()}')
-
-
-    @api.model
-    def _update_account_fba_inventory(self, amz_account):
-        # Get all products
-        product_list = self.env['product.template'].search([])
-
-        if not product_list:
-            _logger.warning('No products found for account %s', amz_account.name)
-            return
-        
-        _logger.info('Found %s products for account %s', len(product_list), amz_account.name)
-
-        fba_wh, fba_inbound_loc, fba_stock_loc, fba_reserved_loc, fba_researching_loc, fba_unfulfillable_loc = self.get_fba_warehouse()
-
-        for product in product_list:
-            # Get FBA inventory for each product by summing each msku's quantities
-            amazon_msku_list = product.amazon_msku_ids
-
-            if not amazon_msku_list:
-                _logger.debug('No Amazon MSKUs found for product: %s', product.name)
-                continue
-
-            total_fulfillable_quantity = 0
-            total_inbound_quantity = 0
-            total_reserved_quantity = 0
-            total_researching_quantity = 0
-            total_unfulfillable_quantity = 0
-            total_future_supply_quantity = 0
-
-            for amazon_msku in amazon_msku_list:
-                fba_inventory = amazon_utils.get_fba_inventory_summary_by_sku(amazon_msku.name, amz_account)
-
-                if not fba_inventory:
-                    _logger.debug('No FBA inventory found for MSKU: %s', amazon_msku.name)
-                    continue
-
-                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundWorkingQuantity', 0)
-                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundShippedQuantity', 0)
-                total_inbound_quantity += fba_inventory.get('inventoryDetails',{}).get('inboundReceivingQuantity', 0)
-
-                total_fulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('fulfillableQuantity', 0)
-                total_reserved_quantity += fba_inventory.get('inventoryDetails',{}).get('reservedQuantity', {}).get('totalReservedQuantity', 0)
-                total_researching_quantity += fba_inventory.get('inventoryDetails',{}).get('researchingQuantity', {}).get('totalResearchingQuantity', 0)
-                total_unfulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('unfulfillableQuantity', {}).get('totalUnfulfillableQuantity', 0)
-                # total_future_supply_quantity += fba_inventory.get('inventoryDetails',{}).get('futureSupplyQuantity', 0)
-
-            # Adjust the inventory in Odoo
-            self.env['stock.quant'].set_available_quantity(product, fba_inbound_loc, total_inbound_quantity, "FBA Inventory Sync (Inbound):")
-            self.env['stock.quant'].set_available_quantity(product, fba_stock_loc, total_fulfillable_quantity, "FBA Inventory Sync (Stock):")
-            self.env['stock.quant'].set_available_quantity(product, fba_reserved_loc, total_reserved_quantity, "FBA Inventory Sync (Reserved):")
-            self.env['stock.quant'].set_available_quantity(product, fba_researching_loc, total_researching_quantity, "FBA Inventory Sync (Researching):")
-            self.env['stock.quant'].set_available_quantity(product, fba_unfulfillable_loc, total_unfulfillable_quantity, "FBA Inventory Sync (Unfulfillable):")
-
-            #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities

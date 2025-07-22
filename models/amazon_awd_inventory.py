@@ -25,70 +25,11 @@ class AmazonAWDInventory(models.Model):
     _description = 'Amazon AWD Inventory'
     _auto = False  # Don't create a database table for this model, since it doesn't store data directly
 
-    def get_awd_warehouse(self):
-        """
-        Ensure the AWD warehouse and necessary stock locations exist.
-        """
-        _logger.debug('Ensuring AWD warehouse and stock locations exist')
-
-        Warehouse = self.env['stock.warehouse']
-        company = self.env.company
-
-        warehouse = Warehouse.search([('code', '=', 'AWD'), ('company_id', '=', company.id)], limit=1)
-        if not warehouse:
-            _logger.info('Creating AWD warehouse for company %s', company.name)
-            warehouse = Warehouse.create({
-                'name': 'AWD',
-                'code': 'AWD',
-                'company_id': company.id,
-            })
-        else:
-            _logger.debug('Using existing AWD warehouse %s', warehouse.display_name)
-
-        # Check for stock location with the name 'Inbound' in the AWD warehouse
-        inbound_loc = self.env['stock.location'].search([
-            ('name', '=', 'Inbound'),
-            ('usage', '=', 'internal'),
-            ('warehouse_id', '=', warehouse.id)
-        ], limit=1)
-        
-        if not inbound_loc:
-            _logger.info('Creating Inbound stock location in AWD warehouse %s', warehouse.display_name)
-            inbound_loc = self.env['stock.location'].create({
-                'name': 'Inbound',
-                'usage': 'internal',
-                'location_id': warehouse.view_location_id.id,
-                'warehouse_id': warehouse.id,
-            })
-            warehouse.wh_input_stock_loc_id = inbound_loc.id
-        else:
-            _logger.debug('Using existing Inbound stock location %s', inbound_loc.display_name)
-
-        # Check for stock location with the name 'Stock' in the AWD warehouse
-        stock_loc = self.env['stock.location'].search([
-            ('name', '=', 'Stock'),
-            ('usage', '=', 'internal'),
-            ('warehouse_id', '=', warehouse.id)
-        ], limit=1)
-
-        if not stock_loc:
-            _logger.info('Creating Stock stock location in AWD warehouse %s', warehouse.display_name)
-            stock_loc = self.env['stock.location'].create({
-                'name': 'Stock',
-                'usage': 'internal',
-                'location_id': warehouse.view_location_id.id,
-                'warehouse_id': warehouse.id,
-            })
-            warehouse.lot_stock_id = stock_loc.id
-        else:
-            _logger.debug('Using existing Stock stock location %s', stock_loc.display_name)
-
-        return warehouse, inbound_loc, stock_loc
-
     @api.model
     def cron_awd_inventory_sync(self):
         amz_seller_accounts = self.env['amazon.seller.account'].search([('import_awd_inventory', '=', True)])
         _logger.info('Starting Amazon AWD inventory sync cron job for %s account(s) with AWD import enabled', len(amz_seller_accounts))
+        self.get_awd_warehouse()  # Initialize AWD warehouse and stock locations
         for amz_account in amz_seller_accounts:
             try:
                 _logger.info('Importing AWD inventory for account: %s', amz_account.name)
@@ -150,3 +91,64 @@ class AmazonAWDInventory(models.Model):
             # Adjust the inventory in Odoo
             self.env['stock.quant'].set_available_quantity(product, awd_inbound_loc, total_product_inbound_quantity, "AWD Inventory Sync (Inbound):")
             self.env['stock.quant'].set_available_quantity(product, awd_stock_loc, total_product_on_hand_quantity, "AWD Inventory Sync (Stock):")
+
+        
+    def get_awd_warehouse(self):
+        """
+        Ensure the AWD warehouse and necessary stock locations exist.
+        """
+        _logger.debug('Ensuring AWD warehouse and stock locations exist')
+
+        Warehouse = self.env['stock.warehouse']
+        company = self.env.company
+
+        warehouse = Warehouse.search([('code', '=', 'AWD'), ('company_id', '=', company.id)], limit=1)
+        if not warehouse:
+            _logger.info('Creating AWD warehouse for company %s', company.name)
+            warehouse = Warehouse.create({
+                'name': 'AWD',
+                'code': 'AWD',
+                'company_id': company.id,
+            })
+        else:
+            _logger.debug('Using existing AWD warehouse %s', warehouse.display_name)
+
+        # Check for stock location with the name 'Inbound' in the AWD warehouse
+        inbound_loc = self.env['stock.location'].search([
+            ('name', '=', 'Inbound'),
+            ('usage', '=', 'internal'),
+            ('warehouse_id', '=', warehouse.id)
+        ], limit=1)
+        
+        if not inbound_loc:
+            _logger.info('Creating Inbound stock location in AWD warehouse %s', warehouse.display_name)
+            inbound_loc = self.env['stock.location'].create({
+                'name': 'Inbound',
+                'usage': 'internal',
+                'location_id': warehouse.view_location_id.id,
+                'warehouse_id': warehouse.id,
+            })
+            warehouse.wh_input_stock_loc_id = inbound_loc.id
+        else:
+            _logger.debug('Using existing Inbound stock location %s', inbound_loc.display_name)
+
+        # Check for stock location with the name 'Stock' in the AWD warehouse
+        stock_loc = self.env['stock.location'].search([
+            ('name', '=', 'Stock'),
+            ('usage', '=', 'internal'),
+            ('warehouse_id', '=', warehouse.id)
+        ], limit=1)
+
+        if not stock_loc:
+            _logger.info('Creating Stock stock location in AWD warehouse %s', warehouse.display_name)
+            stock_loc = self.env['stock.location'].create({
+                'name': 'Stock',
+                'usage': 'internal',
+                'location_id': warehouse.view_location_id.id,
+                'warehouse_id': warehouse.id,
+            })
+            warehouse.lot_stock_id = stock_loc.id
+        else:
+            _logger.debug('Using existing Stock stock location %s', stock_loc.display_name)
+
+        return warehouse, inbound_loc, stock_loc

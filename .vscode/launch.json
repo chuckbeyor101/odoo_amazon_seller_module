@@ -17,7 +17,7 @@
             "args": [
                 "-r", "administrator", // Database user
                 "--addons-path=${workspaceFolder}/../../addons,${workspaceFolder}/../../custom_addons",  // Add custom addons path
-                "-d", "test_db_007", // DB name. This can be changed if you want a fresh start
+                "-d", "test_db_008", // DB name. This can be changed if you want a fresh start
                 "-u", "amazon_seller", // Module to auto reload (Whatever module your working on)
                 "--dev", "xml", // Reloads XML files on changes
                 "--limit-time-cpu", "24000", // Allow longer running cron job operations
