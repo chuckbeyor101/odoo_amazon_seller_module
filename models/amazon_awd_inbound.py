@@ -60,7 +60,11 @@ class AmazonAWDInbound(models.Model):
         awd_wh, awd_inbound_loc, awd_stock_loc = awd_inventory_model.get_awd_warehouse()
 
         for shipment in awd_inbound_shipments:
-            # Check if the shipment already exists as an internal transfer where the source document (origin)
+            self.import_shipment(account, shipment, awd_wh, awd_inbound_loc, awd_stock_loc)
+
+    @api.model
+    def import_shipment(self, account, shipment, awd_wh, awd_inbound_loc, awd_stock_loc):
+        # Check if the shipment already exists as an internal transfer where the source document (origin)
             # is the shipment ID, and destination is AWD Inbound location
             existing_transfer = self.env['stock.picking'].search([
                 ('origin', '=', shipment.get('shipmentId')),
@@ -70,17 +74,17 @@ class AmazonAWDInbound(models.Model):
 
             if not shipment.get('shipmentId'):
                 _logger.warning('Skipping shipment without ShipmentId: %s', shipment)
-                continue
+                return
 
             if existing_transfer:
                 _logger.debug('AWD inbound shipment %s already exists as an internal transfer', shipment.get('shipmentId'))
-                continue
+                return
 
             # Get the inbound shipment details
             shipment_details = amazon_utils.awd_get_inbound_shipment_details(account, shipment.get('shipmentId'))
             if not shipment_details:
                 _logger.warning('No details found for AWD inbound shipment %s', shipment.get('shipmentId'))
-                continue
+                return
 
             # Determine main warehouse stock location from address map
             from_warehouse_location = self.env['amazon.address.map'].get_warehouse_location_else_create(
@@ -96,7 +100,7 @@ class AmazonAWDInbound(models.Model):
             # If no warehouse location is found, skip this shipment
             if not from_warehouse_location:
                 _logger.warning('No warehouse location found for AWD inbound shipment %s. Skipping this shipment.', shipment.get('shipmentId'))
-                continue
+                return
 
             # Create a new internal transfer for the AWD inbound shipment
             pick = self.env['stock.picking'].create({
@@ -130,6 +134,12 @@ class AmazonAWDInbound(models.Model):
                         pick.unlink() # Delete this picking
                         _logger.warning('Skipping AWD inbound shipment %s due to missing product', shipment.get('shipmentId'))
                         return  
+                    
+                    # See if we should skip inventory without cost
+                    if account.skip_inventory_when_no_product_cost and not product.standard_price:
+                        _logger.info('Skipping inventory update for product %s because it has no cost', product.name)
+                        return
+                    
 
                     move_vals = {
                         'name': f"AWD Inbound {shipment.get('shipmentId')} - {item.get('sku')}",
@@ -154,3 +164,6 @@ class AmazonAWDInbound(models.Model):
 
             pick.button_validate()
             _logger.info('Validated internal transfer for AWD inbound shipment %s', shipment.get('shipmentId'))
+
+
+

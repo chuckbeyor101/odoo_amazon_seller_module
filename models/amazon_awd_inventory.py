@@ -72,6 +72,11 @@ class AmazonAWDInventory(models.Model):
                 _logger.debug('No product found for SKU: %s', sku)
                 continue
 
+            # See if we should skip inventory without cost
+            if amz_account.skip_inventory_when_no_product_cost and not product.standard_price:
+                _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
+                continue
+
             # Get all Amazon mskus for the product to account for the sum of quantities
             amazon_msku_list = product.amazon_msku_ids
 

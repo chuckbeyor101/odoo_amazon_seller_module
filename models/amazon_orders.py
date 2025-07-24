@@ -360,6 +360,11 @@ class AmazonOrders(models.Model):
             if not product:
                 _logger.warning('Product not found for SKU: %s', item.get('SellerSKU'))
                 return
+            
+            # See if we should skip inventory without cost
+            if account.skip_inventory_when_no_product_cost and not product.standard_price:
+                _logger.info('Skipping inventory update for product %s because it has no cost', product.name)
+                return
 
             # Determine item price.
             line_price = float(item.get('ItemPrice', {}).get('Amount', 0.0))

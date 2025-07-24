@@ -70,7 +70,14 @@ class AmazonSellerAccount(models.Model):
         help='Enable automatic update of product prices from Amazon. This will update the product prices in Odoo based on the latest data from Amazon. You must have product importing enabled for this to work.'
     )
 
+    skip_inventory_when_no_product_cost = fields.Boolean(
+        string='Skip Inventory When No Product Cost',
+        default=True,
+        help='If enabled, the inventory will not be updated for products that do not have a cost set. This is useful if you want to account for inventory valuation based on product cost, and you do not want to update inventory for products that do not have a cost set yet.'
+    )
+
     # FBA Inventory Settings
+
     import_fba_inventory = fields.Boolean(
         string='Import FBA Inventory',
         default=False,
