@@ -216,7 +216,8 @@ class AmazonImportProducts(models.Model):
     @api.model
     def update_product_details(self, account):
         # Get products where the title has not been fetched yet
-        products = self.env['product.template'].search([('name', '=', 'Unknown')])
+        products = self.env['product.template'].search([('amazon_asin', '!=', False),])
+        #products = self.env['product.template'].search([('name', '=', 'Unknown')])
 
         for product in products:
             catalog_data = amazon_utils.get_catalog_item(account, product.amazon_asin)
@@ -226,8 +227,8 @@ class AmazonImportProducts(models.Model):
             }
 
             # Determine, and convert weight
-            weight = catalog_data.get('attributes', {}).get('item_weight', [])[0].get('value')
-            weight_units = catalog_data.get('attributes', {}).get('item_weight', [])[0].get('unit')
+            weight = catalog_data.get('attributes', {}).get('item_weight', [{}])[0].get('value')
+            weight_units = catalog_data.get('attributes', {}).get('item_weight', [{}])[0].get('unit')
             if weight and weight_units:
                 if weight_units == 'pounds':
                     vals['weight'] = weight * 0.453592  # Convert pounds to kg
@@ -238,8 +239,31 @@ class AmazonImportProducts(models.Model):
                 elif weight_units == 'kilograms':
                     vals['weight'] = weight
                 else:
-                    _logger.debug('Unknown weight unit %s for ASIN %s', weight_units, product.amazon_asin)
+                    _logger.warning('Unknown weight unit %s for ASIN %s', weight_units, product.amazon_asin)
 
+            # determine volume from item package dimensions in meters cubed
+            length = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('length', {}).get('value')
+            length_units = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('length', {}).get('unit')
+            width = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('width', {}).get('value')
+            width_units = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('width', {}).get('unit')
+            height = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('height', {}).get('value')
+            height_units = catalog_data.get('attributes', {}).get('item_package_dimensions', [{}])[0].get('height', {}).get('unit')
+
+            if length and width and height and length_units and width_units and height_units:
+                if length_units == 'inches':
+                    vals['volume'] = (length * 0.0254) * (width * 0.0254) * (height * 0.0254)
+                elif length_units == 'centimeters':
+                    vals['volume'] = (length / 100.0) * (width / 100.0) * (height / 100.0)
+                elif length_units == 'millimeters': 
+                    vals['volume'] = (length / 1000.0) * (width / 1000.0) * (height / 1000.0)
+                elif length_units == 'meters':
+                    vals['volume'] = length * width * height
+                else:
+                    _logger.warning('Unknown length unit %s for ASIN %s', length_units, product.amazon_asin)
+
+                # if volum is less than 0.01 but not 0 set to 0.01 since the minimum rounding on odoo is 0.01
+                if vals.get('volume', 0) < 0.01 and vals.get('volume', 0) > 0:
+                    vals['volume'] = 0.01
 
             product.write(vals)
             _logger.debug('Updated product details for ASIN: %s', product.amazon_asin)
