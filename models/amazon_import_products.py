@@ -225,6 +225,22 @@ class AmazonImportProducts(models.Model):
                 'name': catalog_data.get('summaries', [])[0].get('itemName') if catalog_data.get('summaries') and len(catalog_data.get('summaries')) > 0 else 'Unknown',
             }
 
+            # Determine, and convert weight
+            weight = catalog_data.get('attributes', {}).get('item_weight', [])[0].get('value')
+            weight_units = catalog_data.get('attributes', {}).get('item_weight', [])[0].get('unit')
+            if weight and weight_units:
+                if weight_units == 'pounds':
+                    vals['weight'] = weight * 0.453592  # Convert pounds to kg
+                elif weight_units == 'ounces':
+                    vals['weight'] = weight * 0.0283495  # Convert ounces to kg
+                elif weight_units == 'grams':
+                    vals['weight'] = weight / 1000.0  # Convert grams to kg
+                elif weight_units == 'kilograms':
+                    vals['weight'] = weight
+                else:
+                    _logger.debug('Unknown weight unit %s for ASIN %s', weight_units, product.amazon_asin)
+
+
             product.write(vals)
             _logger.debug('Updated product details for ASIN: %s', product.amazon_asin)
 

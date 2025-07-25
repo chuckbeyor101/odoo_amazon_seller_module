@@ -84,7 +84,7 @@ def get_catalog_item(account, asin):
     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
     catalog_items = CatalogItems(credentials=credentials, marketplace=sp_marketplace)
-    response = catalog_items.get_catalog_item(asin=asin)
+    response = catalog_items.get_catalog_item(asin=asin, includedData=['attributes', 'summaries'])
 
     if response.payload:
         return response.payload

@@ -24,7 +24,7 @@
                     <page string="Amazon" name="amazon">
                         <group>
                             <group name="amazon_identification">
-                                <field name="amazon_asin" readonly="1"/>
+                                <field name="amazon_asin"/>
                             </group>
                         </group>
                         <group string="Amazon SKUs" name="amazon_skus" col="2">
