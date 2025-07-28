@@ -76,6 +76,48 @@ class AmazonFBAInbound(models.Model):
 
             transfer_name = f'{shipment_id} [{msku}]'
 
+            # Lookup product by any MSKU
+            product = self.env['product.template'].find_by_msku(msku)
+            
+            if not product:
+                _logger.warning('No product found for MSKU: %s. Skipping this shipment.', msku)
+                continue
+
+            # # See if we should skip inventory without cost
+            if account.skip_inventory_when_no_product_cost and not product.standard_price:
+                _logger.info('Skipping inventory update for product %s because it has no cost', product.name)
+                continue
+            
+            # # if we should skip inventory not using AVCO
+            if account.skip_inventory_not_avco and product.cost_method != 'average':
+                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                continue
+
+            # # Get additional shipment details
+            shipment_details = amazon_utils.fba_get_shipment_by_id(shipment_id, account)
+
+             # Determine main warehouse stock location from address map
+            from_warehouse_location = self.env['amazon.address.map'].get_warehouse_location_else_create(
+                name=shipment_details.get('ShipFromAddress', {}).get('Name', ''),
+                address_line1=shipment_details.get('ShipFromAddress', {}).get('AddressLine1', ''),
+                address_line2=shipment_details.get('ShipFromAddress', {}).get('AddressLine2', ''),
+                city=shipment_details.get('ShipFromAddress', {}).get('City', ''),
+                state_or_region=shipment_details.get('ShipFromAddress', {}).get('StateOrProvinceCode', ''),
+                postal_code=shipment_details.get('ShipFromAddress', {}).get('PostalCode', ''),
+                country_code=shipment_details.get('ShipFromAddress', {}).get('CountryCode', '')
+            ) 
+
+            # If no warehouse location is found, skip this shipment
+            if not from_warehouse_location:
+                _logger.warning('No warehouse location found for FBA inbound shipment %s. Skipping this shipment.', transfer_name)
+                continue
+
+            from_wh = from_warehouse_location.warehouse_id
+
+            if not from_wh:
+                _logger.warning('No warehouse found for FBA inbound shipment %s. Skipping this shipment.', transfer_name)
+                continue
+
             # Check if the shipment already exists as an internal transfer where the source document (origin)
             # is the shipment ID, and destination is FBA Inbound location
             existing_transfer = self.env['stock.picking'].search([
@@ -88,47 +130,12 @@ class AmazonFBAInbound(models.Model):
                 _logger.info('FBA inbound shipment %s already exists as an internal transfer', transfer_name)
                 continue
 
-            # Lookup product by any MSKU - simple and straightforward
-            product = self.env['product.template'].find_by_msku(msku)
-            
-            if not product:
-                _logger.warning('No product found for MSKU: %s. Skipping this shipment.', msku)
-                continue
-
-            # See if we should skip inventory without cost
-            if account.skip_inventory_when_no_product_cost and not product.standard_price:
-                _logger.info('Skipping inventory update for product %s because it has no cost', product.name)
-                continue
-            
-            # if we should skip inventory not using AVCO
-            if account.skip_inventory_not_avco and product.cost_method != 'average':
-                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
-                continue
-
-            # Get additional shipment details
-            shipment_details = amazon_utils.fba_get_shipment_by_id(shipment_id, account)
-
-            # Determine main warehouse stock location from address map
-            from_warehouse_location = self.env['amazon.address.map'].get_warehouse_location_else_create(
-                name=shipment_details.get('ShipFromAddress', {}).get('Name', ''),
-                address_line1=shipment_details.get('ShipFromAddress', {}).get('AddressLine1', ''),
-                address_line2=shipment_details.get('ShipFromAddress', {}).get('AddressLine2', ''),
-                city=shipment_details.get('ShipFromAddress', {}).get('City', ''),
-                state_or_region=shipment_details.get('ShipFromAddress', {}).get('StateOrProvinceCode', ''),
-                postal_code=shipment_details.get('ShipFromAddress', {}).get('PostalCode', ''),
-                country_code=shipment_details.get('ShipFromAddress', {}).get('CountryCode', '')
-            )   
-
-            # If no warehouse location is found, skip this shipment
-            if not from_warehouse_location:
-                _logger.warning('No warehouse location found for FBA inbound shipment %s. Skipping this shipment.', transfer_name)
-                continue
-
-            # Create a new internal transfer for the FBA inbound shipment
+            # Create delivery from the source warehouse to the FBA Transit location
+            fba_transit_loc = self.get_fba_transit_loc()
             pick = self.env['stock.picking'].create({
-                'picking_type_id': fba_wh.in_type_id.id,
+                'picking_type_id': from_wh.out_type_id.id,
                 'location_id': from_warehouse_location.id,
-                'location_dest_id': fba_inbound_loc.id,
+                'location_dest_id': fba_transit_loc.id,
                 'origin': transfer_name,
                 'note': f'''
                     FBA Inbound Shipment ID: {shipment_id} |
@@ -136,7 +143,7 @@ class AmazonFBAInbound(models.Model):
                 ''',
             })
 
-            move_vals = {
+            delivery_move_vals = {
                 'name': f"FBA Inbound {shipment_id} - {msku}",
                 'product_id': product.id,
                 'product_uom_qty': item_qty,
@@ -144,18 +151,46 @@ class AmazonFBAInbound(models.Model):
                 'availability': item_qty,
                 'product_uom': self.env.ref('uom.product_uom_unit').id,
                 'location_id': from_warehouse_location.id,
+                'location_dest_id': fba_transit_loc.id,
+                'picking_id': pick.id,
+            }
+
+
+            reciept_move_vals = {
+                'name': f"FBA Inbound {shipment_id} - {msku} (Transit to Inbound)",
+                'product_id': product.id,
+                'product_uom_qty': item_qty,
+                'quantity': item_qty,
+                'availability': item_qty,
+                'product_uom': self.env.ref('uom.product_uom_unit').id,
+                'location_id': fba_transit_loc.id,
                 'location_dest_id': fba_inbound_loc.id,
                 'picking_id': pick.id,
             }
-            self.env['stock.move'].create(move_vals)
+
+            # Create the stock moves for delivery and receipt
+            self.env['stock.move'].create(delivery_move_vals)
+            self.env['stock.move'].create(reciept_move_vals)
 
             # Confirm the picking to create the stock moves
             pick.action_confirm()
             _logger.info('Created internal transfer for FBA inbound shipment %s', transfer_name)
-
             pick.action_assign()
             _logger.info('Assigned stock moves for FBA inbound shipment %s', transfer_name)
-
             pick.button_validate()
             _logger.info('Validated internal transfer for FBA inbound shipment %s', transfer_name)
 
+
+    def get_fba_transit_loc(self):
+        """
+        Get or create the FBA transit location. This location is used to hold FBA inbound shipments before they are transferred to the FBA Inbound location. It is a Partner/Customer location to allow for landed cost transactions.
+        """
+        fba_partner_loc = self.env['stock.location'].search([('name', '=', 'FBA Transit')], limit=1)
+        if not fba_partner_loc:
+            fba_partner_loc = self.env['stock.location'].create({
+                'name': 'FBA Transit',
+                'usage': 'customer',
+                'location_id': self.env.ref('stock.stock_location_customers').id,
+            })
+
+        return fba_partner_loc
