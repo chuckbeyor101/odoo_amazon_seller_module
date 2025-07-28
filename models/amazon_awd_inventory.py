@@ -104,8 +104,6 @@ class AmazonAWDInventory(models.Model):
             date_string = datetime.now().strftime('%Y-%m-%d')
             self.awd_inventory_adjustment(product, awd_inbound_loc, total_product_inbound_quantity, awd_wh, f"AWD Inventory Sync (Inbound): {amazon_msku.name}, {date_string}")
             self.awd_inventory_adjustment(product, awd_stock_loc, total_product_on_hand_quantity, awd_wh, f"AWD Inventory Sync (Stock): {amazon_msku.name}, {date_string}")
-            # self.env['stock.quant'].set_available_quantity(product, awd_inbound_loc, total_product_inbound_quantity, "AWD Inventory Sync (Inbound):")
-            # self.env['stock.quant'].set_available_quantity(product, awd_stock_loc, total_product_on_hand_quantity, "AWD Inventory Sync (Stock):")
 
 
     def awd_inventory_adjustment(self, product, location, final_quantity, awd_wh, name):
