@@ -17,6 +17,8 @@ import traceback
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from .utils import amazon_utils
+from datetime import datetime
+from datetime import date
 
 _logger = logging.getLogger(__name__)
 
@@ -77,6 +79,11 @@ class AmazonAWDInventory(models.Model):
                 _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
                 continue
 
+            # if we should skip inventory not using AVCO
+            if amz_account.skip_inventory_not_avco and product.cost_method != 'average':
+                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                continue
+
             # Get all Amazon mskus for the product to account for the sum of quantities
             amazon_msku_list = product.amazon_msku_ids
 
@@ -94,9 +101,91 @@ class AmazonAWDInventory(models.Model):
                 finished_skus.append(amazon_msku.name)
 
             # Adjust the inventory in Odoo
-            self.env['stock.quant'].set_available_quantity(product, awd_inbound_loc, total_product_inbound_quantity, "AWD Inventory Sync (Inbound):")
-            self.env['stock.quant'].set_available_quantity(product, awd_stock_loc, total_product_on_hand_quantity, "AWD Inventory Sync (Stock):")
+            date_string = datetime.now().strftime('%Y-%m-%d')
+            self.awd_inventory_adjustment(product, awd_inbound_loc, total_product_inbound_quantity, awd_wh, f"AWD Inventory Sync (Inbound): {amazon_msku.name}, {date_string}")
+            self.awd_inventory_adjustment(product, awd_stock_loc, total_product_on_hand_quantity, awd_wh, f"AWD Inventory Sync (Stock): {amazon_msku.name}, {date_string}")
+            # self.env['stock.quant'].set_available_quantity(product, awd_inbound_loc, total_product_inbound_quantity, "AWD Inventory Sync (Inbound):")
+            # self.env['stock.quant'].set_available_quantity(product, awd_stock_loc, total_product_on_hand_quantity, "AWD Inventory Sync (Stock):")
 
+
+    def awd_inventory_adjustment(self, product, location, final_quantity, awd_wh, name):
+        # Get current quantity in the location
+        current_qty = self.env['stock.quant']._get_available_quantity(product, location)
+        delta_qty = final_quantity - current_qty
+
+        inventory_adjustment_location = self.get_awd_inv_adj_location()
+
+        if not inventory_adjustment_location:
+            _logger.error('No AWD Inventory Adjustment location found. Cannot perform inventory adjustment for product %s at location %s', product.name, location.name)
+            return
+
+        if delta_qty > 0:
+            source_location = inventory_adjustment_location
+            destination_location = location
+        elif delta_qty < 0:
+            source_location = location
+            destination_location = inventory_adjustment_location
+            delta_qty = abs(delta_qty)
+        else:
+            _logger.debug('No inventory adjustment needed for product %s at location %s', product.name, location.name)
+            return
+        
+        # Add Qty to the name for clarity
+        name = f'{name} ({delta_qty})'
+        
+        awd_internal_picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('warehouse_id', '=', awd_wh.id),], limit=1)
+
+        picking = self.env['stock.picking'].create({
+            'name': name,
+            'picking_type_id': awd_internal_picking_type.id,
+            'location_id': source_location.id,
+            'location_dest_id': destination_location.id,
+            'state': 'draft',
+        })
+
+        move = self.env['stock.move'].create({
+            'name': name,
+            'product_id': product.id,
+            'product_uom_qty': delta_qty,
+            'quantity': delta_qty,
+            'availability': delta_qty,
+            'product_uom': product.uom_id.id,
+            'location_id': source_location.id,
+            'location_dest_id': destination_location.id,
+            'state': 'draft',
+            'picking_id': picking.id,
+        })
+
+        # Validate the picking to create the stock quant
+        picking.action_confirm()
+        picking.action_assign() 
+        picking._action_done()
+        picking.button_validate()
+
+        _logger.info('Inventory adjustment for product %s at location %s: %s units adjusted', product.name, location.name, delta_qty)
+
+        
+    def get_awd_inv_adj_location(self):
+        """
+        Ensure the AWD inventory adjustment location exists.
+        """
+        _logger.debug('Ensuring AWD inventory adjustment location exists')
+
+        location = self.env['stock.location'].search([
+            ('name', '=', 'AWD Inventory Adjustment'),
+            ('usage', '=', 'inventory'),
+        ], limit=1)
+
+        if not location:
+            _logger.info('Creating AWD Inventory Adjustment location')
+            location = self.env['stock.location'].create({
+                'name': 'AWD Inventory Adjustment',
+                'usage': 'inventory',
+            })
+        else:
+            _logger.debug('Using existing AWD Inventory Adjustment location %s', location.display_name)
+
+        return location
         
     def get_awd_warehouse(self):
         """

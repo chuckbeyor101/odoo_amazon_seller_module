@@ -76,6 +76,12 @@ class AmazonSellerAccount(models.Model):
         help='If enabled, the inventory will not be updated for products that do not have a cost set. This is useful if you want to account for inventory valuation based on product cost, and you do not want to update inventory for products that do not have a cost set yet.'
     )
 
+    skip_inventory_not_avco = fields.Boolean(
+        string='Skip Inventory Not Using AVCO',
+        default=True,
+        help='If enabled, the inventory will not be updated for products that are not using the Average Cost (AVCO) valuation method. This is useful if you want to account for inventory valuation based on product cost, and you do not want to update inventory for products that are not using AVCO.'
+    )
+
     # FBA Inventory Settings
 
     import_fba_inventory = fields.Boolean(

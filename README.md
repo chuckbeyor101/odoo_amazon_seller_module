@@ -37,6 +37,9 @@ This module integrates Amazon Seller Central with Odoo, providing functionality 
    - Find "Amazon Seller" in the apps list
    - Click "Install"
 
-## Configuration
+## Configuration Amazon API Connection
+Amazon Seller -> Account Configuration -> New
 
-After installation, configure your Amazon Seller account credentials in the module settings to start syncing data.
+## Important Considerations
+### Inventory Cost Valuation
+- If your planning on using inventory cost valuations then its important to configure your valuation and item cost prior to importing Amazon inventory transactions.

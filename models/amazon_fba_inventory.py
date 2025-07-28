@@ -13,11 +13,15 @@
 #  GitHub: https://github.com/chuckbeyor101/odoo_amazon_seller_module
 # ######################################################################################################################
 
+from asyncio.log import logger
+from datetime import datetime
+from datetime import date
 import logging
 import traceback
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from .utils import amazon_utils
+import random
 
 _logger = logging.getLogger(__name__)
 
@@ -63,6 +67,11 @@ class AmazonFBAInventory(models.Model):
                 _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
                 continue
 
+            # if we should skip inventory not using AVCO
+            if amz_account.skip_inventory_not_avco and product.cost_method != 'average':
+                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                continue
+
             # Get FBA inventory for each product by summing each msku's quantities
             amazon_msku_list = product.amazon_msku_ids
 
@@ -94,14 +103,94 @@ class AmazonFBAInventory(models.Model):
                 total_unfulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('unfulfillableQuantity', {}).get('totalUnfulfillableQuantity', 0)
                 # total_future_supply_quantity += fba_inventory.get('inventoryDetails',{}).get('futureSupplyQuantity', 0)
 
-            # Adjust the inventory in Odoo
-            self.env['stock.quant'].set_available_quantity(product, fba_inbound_loc, total_inbound_quantity, "FBA Inventory Sync (Inbound):")
-            self.env['stock.quant'].set_available_quantity(product, fba_stock_loc, total_fulfillable_quantity, "FBA Inventory Sync (Stock):")
-            self.env['stock.quant'].set_available_quantity(product, fba_reserved_loc, total_reserved_quantity, "FBA Inventory Sync (Reserved):")
-            self.env['stock.quant'].set_available_quantity(product, fba_researching_loc, total_researching_quantity, "FBA Inventory Sync (Researching):")
-            self.env['stock.quant'].set_available_quantity(product, fba_unfulfillable_loc, total_unfulfillable_quantity, "FBA Inventory Sync (Unfulfillable):")
+                date_string = datetime.now().strftime('%Y-%m-%d')
+                self.fba_inventory_adjustment(product, fba_inbound_loc, total_inbound_quantity, fba_wh, f"FBA Inventory Sync (Inbound): {amazon_msku.name}, {date_string}")
+                self.fba_inventory_adjustment(product, fba_stock_loc, total_fulfillable_quantity, fba_wh, f"FBA Inventory Sync (Stock): {amazon_msku.name}, {date_string}")
+                self.fba_inventory_adjustment(product, fba_reserved_loc, total_reserved_quantity, fba_wh, f"FBA Inventory Sync (Reserved): {amazon_msku.name}, {date_string}")
+                self.fba_inventory_adjustment(product, fba_researching_loc, total_researching_quantity, fba_wh, f"FBA Inventory Sync (Researching): {amazon_msku.name}, {date_string}")
+                self.fba_inventory_adjustment(product, fba_unfulfillable_loc, total_unfulfillable_quantity, fba_wh, f"FBA Inventory Sync (Unfulfillable): {amazon_msku.name}, {date_string}")
+                #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities
 
-            #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities
+
+    def fba_inventory_adjustment(self, product, location, final_quantity, fba_wh, name):
+        # Get current quantity in the location
+        current_qty = self.env['stock.quant']._get_available_quantity(product, location)
+        delta_qty = final_quantity - current_qty
+        
+        inventory_adjustment_location = self.get_fba_inv_adj_location()
+
+        if not inventory_adjustment_location:
+            _logger.error('No FBA Inventory Adjustment location found. Cannot perform inventory adjustment for product %s at location %s', product.name, location.name)
+            return
+
+        if delta_qty > 0:
+            source_location = inventory_adjustment_location
+            destination_location = location
+        elif delta_qty < 0:
+            source_location = location
+            destination_location = inventory_adjustment_location
+            delta_qty = abs(delta_qty)
+        else:
+            _logger.debug('No inventory adjustment needed for product %s at location %s', product.name, location.name)
+            return
+        
+        # Add Qty to the name for clarity
+        name = f'{name} ({delta_qty})'
+        
+        fba_internal_picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('warehouse_id', '=', fba_wh.id),], limit=1)
+
+        picking = self.env['stock.picking'].create({
+            'name': name,
+            'picking_type_id': fba_internal_picking_type.id,
+            'location_id': source_location.id,
+            'location_dest_id': destination_location.id,
+            'state': 'draft',
+        })
+
+        move = self.env['stock.move'].create({
+            'name': name,
+            'product_id': product.id,
+            'product_uom_qty': delta_qty,
+            'quantity': delta_qty,
+            'availability': delta_qty,
+            'product_uom': product.uom_id.id,
+            'location_id': source_location.id,
+            'location_dest_id': destination_location.id,
+            'state': 'draft',
+            'picking_id': picking.id,
+        })
+
+        # Validate the picking to create the stock quant
+        picking.action_confirm()
+        picking.action_assign() 
+        picking._action_done()
+        picking.button_validate()
+
+        _logger.info('Inventory adjustment for product %s at location %s: %s units adjusted', product.name, location.name, delta_qty)
+
+
+    def get_fba_inv_adj_location(self):
+        """
+        Ensure the FBA Inventory Adjustment location exists.
+        """
+        _logger.debug('Ensuring FBA Inventory Adjustment location exists')
+
+        location = self.env['stock.location'].search([
+            ('name', '=', 'FBA Inventory adjustment'),
+            ('usage', '=', 'inventory'),
+        ], limit=1)
+
+        if not location:
+            _logger.info('Creating FBA Inventory Adjustment location')
+            location = self.env['stock.location'].create({
+                'name': 'FBA Inventory adjustment',
+                'usage': 'inventory',
+                'location_id': self.env.ref('stock.stock_location_stock').id,
+            })
+        else:
+            _logger.debug('Using existing FBA Inventory Adjustment location %s', location.display_name)
+
+        return location
 
 
     def get_fba_warehouse(self):

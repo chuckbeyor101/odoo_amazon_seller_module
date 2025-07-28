@@ -59,10 +59,11 @@
                         </group>
                     </group>
                     <group>
-                    <group name="listing_settings" string="Listing Settings">
+                    <group name="general_listing_settings" string="General Listing Settings">
                             <field name="import_products"/>
                             <field name="import_product_price"/>
                             <field name="skip_inventory_when_no_product_cost"/>
+                            <field name="skip_inventory_not_avco"/>
                         </group>
                         <group name="" string="">
 

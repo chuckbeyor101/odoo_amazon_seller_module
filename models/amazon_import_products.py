@@ -261,7 +261,7 @@ class AmazonImportProducts(models.Model):
                 else:
                     _logger.warning('Unknown length unit %s for ASIN %s', length_units, product.amazon_asin)
 
-                # if volum is less than 0.01 but not 0 set to 0.01 since the minimum rounding on odoo is 0.01
+                # if volume is less than 0.01 but not 0 set to 0.01 since the minimum rounding on odoo is 0.01
                 if vals.get('volume', 0) < 0.01 and vals.get('volume', 0) > 0:
                     vals['volume'] = 0.01
 

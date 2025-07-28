@@ -99,6 +99,11 @@ class AmazonFBAInbound(models.Model):
             if account.skip_inventory_when_no_product_cost and not product.standard_price:
                 _logger.info('Skipping inventory update for product %s because it has no cost', product.name)
                 continue
+            
+            # if we should skip inventory not using AVCO
+            if account.skip_inventory_not_avco and product.cost_method != 'average':
+                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                continue
 
             # Get additional shipment details
             shipment_details = amazon_utils.fba_get_shipment_by_id(shipment_id, account)
