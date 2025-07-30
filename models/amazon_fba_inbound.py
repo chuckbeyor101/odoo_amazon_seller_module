@@ -141,7 +141,7 @@ class AmazonFBAInbound(models.Model):
             product = self.env['product.template'].find_by_msku(msku)
 
             if not product:
-                _logger.warning('No product found for MSKU: %s. Skipping this shipment.', msku)
+                _logger.warning(f'Skipping shipment {transfer_name} because product with MSKU {msku} not found.')
                 return
 
             # See if we should skip inventory without cost

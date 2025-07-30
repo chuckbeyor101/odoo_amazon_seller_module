@@ -137,7 +137,7 @@ class AmazonAWDInbound(models.Model):
 
                     if not product:
                         # Stop processing this transfer. Something is wrong with the shipment
-                        _logger.warning('Skipping AWD inbound shipment %s due to missing product', shipment.get('shipmentId'))
+                        _logger.warning(f'Skipping shipment {transfer_name} because product with asin {asin} not found.')
                         return  
                     
                     # See if we should skip inventory without cost
