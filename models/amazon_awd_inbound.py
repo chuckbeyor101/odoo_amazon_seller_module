@@ -142,12 +142,12 @@ class AmazonAWDInbound(models.Model):
                     
                     # See if we should skip inventory without cost
                     if account.skip_inventory_when_no_product_cost and not product.standard_price:
-                        _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
+                        _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} has no cost set.')
                         return
                     
                     # if we should skip inventory not using AVCO
                     if account.skip_inventory_not_avco and product.cost_method != 'average':
-                        _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                        _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} is not using AVCO.')
                         continue
 
                 delivery_vals = {
