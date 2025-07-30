@@ -73,7 +73,7 @@ class AmazonOrders(models.Model):
         ], limit=1)
 
         if not shipping_partner:
-            _logger.info('Creating shipping partner for %s', partner.name)
+            _logger.debug('Creating shipping partner for %s', partner.name)
             shipping_partner = Partner.create({
                 'type': type,
                 'name': name,
