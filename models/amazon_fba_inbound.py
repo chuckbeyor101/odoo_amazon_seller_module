@@ -99,13 +99,13 @@ class AmazonFBAInbound(models.Model):
 
         # If no warehouse location is found, skip this shipment
         if not from_warehouse_location:
-            _logger.warning('No warehouse location found for FBA inbound shipment %s. Skipping this shipment.', transfer_name)
+            _logger.warning(f'No warehouse location found for FBA inbound shipment {transfer_name}. warehouse: {shipment.get("ShipFromAddress", {}).get("Name", "")} Skipping this shipment. ')
             return
 
         from_wh = from_warehouse_location.warehouse_id
 
         if not from_wh:
-            _logger.warning('No warehouse found for FBA inbound shipment %s. Skipping this shipment.', transfer_name)
+            _logger.warning(f'No warehouse found for FBA inbound shipment {transfer_name}. warehouse: {shipment.get("ShipFromAddress", {}).get("Name", "")} Skipping this shipment.')
             return
 
         # Create delivery from the source warehouse to the FBA Transit location
@@ -146,12 +146,12 @@ class AmazonFBAInbound(models.Model):
 
             # See if we should skip inventory without cost
             if account.skip_inventory_when_no_product_cost and not product.standard_price:
-                _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
+                _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} has no cost set.')
                 return
             
             # if we should skip inventory not using AVCO
             if account.skip_inventory_not_avco and product.cost_method != 'average':
-                _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
+                _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} is not using AVCO.')
                 return
 
             delivery_move_vals = {
