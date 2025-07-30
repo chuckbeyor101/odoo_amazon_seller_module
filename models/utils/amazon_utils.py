@@ -221,7 +221,7 @@ def awd_list_inbound_shipments(account, **kwargs):
     awd = AmazonWarehousingAndDistribution(credentials=credentials, marketplace=sp_marketplace)
 
     @throttle_retry()
-    @load_all_pages()
+    @load_all_pages(next_token_param="next_token")
     def get_shipments(**kwargs):
         return awd.list_inbound_shipments(**kwargs, maxResults=200)
 
@@ -255,35 +255,6 @@ def awd_get_inbound_shipment_details(account, shipment_id, **kwargs):
         logging.error("No shipment found or error occurred.")
         return {}
 
-
-# def fba_list_shipment_items_previous_days(account, days:int=365, **kwargs):
-#     """
-#     Fetches a list of inbound shipments from FBA.
-#     """
-#     # Get credentials and marketplace from the account
-#     credentials = get_credentials_from_account(account)
-#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
-
-#     # Get Inbound Shipments
-#     fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
-
-    
-#     @load_all_pages(next_token_param="NextToken", extras=dict(QueryType='NEXT_TOKEN'))
-#     @throttle_retry()
-#     def get_shipment_items(**kwargs):
-#         return fba.shipment_items(**kwargs)
-
-#     items = []
-
-#     for page in get_shipment_items(
-#         QueryType='DATE_RANGE',
-#         LastUpdatedAfter=(datetime.utcnow() - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
-#         LastUpdatedBefore=datetime.utcnow().isoformat().replace("+00:00", "Z"),
-#     ):
-#         for item in page.payload.get('ItemData', []):
-#             items.append(item)
-
-#     return items
 
 def fba_inbound_shipments_previous_days(account, days:int=365, shipmentStatusList:list=['WORKING', 'SHIPPED', 'RECEIVING', 'CANCELLED', 'DELETED', 'CLOSED', 'ERROR', 'IN_TRANSIT', 'DELIVERED', 'CHECKED_IN']):
     """
@@ -332,6 +303,36 @@ def fba_get_shipment_items_by_shipment_id(account, shipment_id, **kwargs):
     shipment_items = get_shipment_items().payload.get('ItemData', [])
 
     return shipment_items
+
+
+# def fba_list_shipment_items_previous_days(account, days:int=365, **kwargs):
+#     """
+#     Fetches a list of inbound shipments from FBA.
+#     """
+#     # Get credentials and marketplace from the account
+#     credentials = get_credentials_from_account(account)
+#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
+
+#     # Get Inbound Shipments
+#     fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
+
+    
+#     @load_all_pages(next_token_param="NextToken", extras=dict(QueryType='NEXT_TOKEN'))
+#     @throttle_retry()
+#     def get_shipment_items(**kwargs):
+#         return fba.shipment_items(**kwargs)
+
+#     items = []
+
+#     for page in get_shipment_items(
+#         QueryType='DATE_RANGE',
+#         LastUpdatedAfter=(datetime.utcnow() - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
+#         LastUpdatedBefore=datetime.utcnow().isoformat().replace("+00:00", "Z"),
+#     ):
+#         for item in page.payload.get('ItemData', []):
+#             items.append(item)
+
+#     return items
 
 
 # def fba_get_shipment_by_id(shipment_id, account, **kwargs):

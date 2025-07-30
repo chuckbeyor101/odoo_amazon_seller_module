@@ -56,7 +56,8 @@ class AmazonOrders(models.Model):
 
     def get_or_create_shipping_partner(self, partner, type, name=None, address1=None, address2=None, city=None, state=None, zip_code=None, country_code=None):
         """
-        Get or create a shipping partner for the given address.
+        Get or create a shipping partner for the given address. A shipping partner is how Odoo handles shipping addresses.
+        This is used to create a delivery address for the order.
         """
         Partner = self.env['res.partner']
         
