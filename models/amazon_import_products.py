@@ -191,6 +191,8 @@ class AmazonImportProducts(models.Model):
                 'type': 'consu',  # 'consu' for Goods (tangible products)
                 'amazon_asin': asin,
                 'is_storable': True,  # Ensure new products track inventory only by quantity.
+                'taxes_id': None, # No sales tax by default
+                'supplier_taxes_id': None, # No purchase tax by default
             }
 
             # If account is set to update pricing 

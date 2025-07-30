@@ -2,16 +2,16 @@
 
 This module integrates Amazon Seller Central with Odoo, providing functionality for managing Amazon products, inventory, and orders.
 
-## Installation
 
-### Prerequisites
-- Odoo 18.0 or later
+## Prerequisites
+- Odoo 18.0
 - Python 3.8 or later
 - pip package manager
 - Odoo Inventory module must be installed
 - Odoo Sales module must be installed if importing orders
+- Odoo Purchase module must be installed if using inventory valuation and/or landed cost calculations
 
-### Steps
+## Installation
 
 1. **Clone the repository to your Odoo addons folder:**
    ```bash
@@ -36,6 +36,11 @@ This module integrates Amazon Seller Central with Odoo, providing functionality 
 5. **Install the Module:**
    - Find "Amazon Seller" in the apps list
    - Click "Install"
+
+## Prefered  Odoo Settings
+- Inventory Settings > Storage Locations: Enabled
+- Inventory Settings > Landed Cost: Enabled
+- Inventory App > Configuration Product Categories > Coasting Method: Average Cost (AVCO)
 
 ## Configuration Amazon API Connection
 Amazon Seller -> Account Configuration -> New

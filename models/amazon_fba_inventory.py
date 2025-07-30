@@ -135,7 +135,7 @@ class AmazonFBAInventory(models.Model):
             return
         
         # Add Qty to the name for clarity
-        name = f'{name} ({delta_qty})'
+        name = f'{name} ({delta_qty}) - {random.randint(1000, 9999)}'
         
         fba_internal_picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('warehouse_id', '=', fba_wh.id),], limit=1)
 

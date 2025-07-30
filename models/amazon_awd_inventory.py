@@ -19,6 +19,7 @@ from odoo.exceptions import ValidationError
 from .utils import amazon_utils
 from datetime import datetime
 from datetime import date
+import random
 
 _logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class AmazonAWDInventory(models.Model):
             return
         
         # Add Qty to the name for clarity
-        name = f'{name} ({delta_qty})'
+        name = f'{name} ({delta_qty}) - {random.randint(1000, 9999)}'
         
         awd_internal_picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal'),('warehouse_id', '=', awd_wh.id),], limit=1)
 

@@ -223,7 +223,7 @@ def awd_list_inbound_shipments(account, **kwargs):
     @throttle_retry()
     @load_all_pages()
     def get_shipments(**kwargs):
-        return awd.list_inbound_shipments(**kwargs)
+        return awd.list_inbound_shipments(**kwargs, maxResults=200)
 
     shipments = []
 
@@ -256,34 +256,34 @@ def awd_get_inbound_shipment_details(account, shipment_id, **kwargs):
         return {}
 
 
-def fba_list_shipment_items_previous_days(account, days:int=365, **kwargs):
-    """
-    Fetches a list of inbound shipments from FBA.
-    """
-    # Get credentials and marketplace from the account
-    credentials = get_credentials_from_account(account)
-    sp_marketplace = sp_marketplace_mapper(account.marketplace)
+# def fba_list_shipment_items_previous_days(account, days:int=365, **kwargs):
+#     """
+#     Fetches a list of inbound shipments from FBA.
+#     """
+#     # Get credentials and marketplace from the account
+#     credentials = get_credentials_from_account(account)
+#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
-    # Get Inbound Shipments
-    fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
+#     # Get Inbound Shipments
+#     fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
 
     
-    @load_all_pages(next_token_param="NextToken", extras=dict(QueryType='NEXT_TOKEN'))
-    @throttle_retry()
-    def get_shipment_items(**kwargs):
-        return fba.shipment_items(**kwargs)
+#     @load_all_pages(next_token_param="NextToken", extras=dict(QueryType='NEXT_TOKEN'))
+#     @throttle_retry()
+#     def get_shipment_items(**kwargs):
+#         return fba.shipment_items(**kwargs)
 
-    items = []
+#     items = []
 
-    for page in get_shipment_items(
-        QueryType='DATE_RANGE',
-        LastUpdatedAfter=(datetime.utcnow() - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
-        LastUpdatedBefore=datetime.utcnow().isoformat().replace("+00:00", "Z"),
-    ):
-        for item in page.payload.get('ItemData', []):
-            items.append(item)
+#     for page in get_shipment_items(
+#         QueryType='DATE_RANGE',
+#         LastUpdatedAfter=(datetime.utcnow() - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
+#         LastUpdatedBefore=datetime.utcnow().isoformat().replace("+00:00", "Z"),
+#     ):
+#         for item in page.payload.get('ItemData', []):
+#             items.append(item)
 
-    return items
+#     return items
 
 def fba_inbound_shipments_previous_days(account, days:int=365, shipmentStatusList:list=['WORKING', 'SHIPPED', 'RECEIVING', 'CANCELLED', 'DELETED', 'CLOSED', 'ERROR', 'IN_TRANSIT', 'DELIVERED', 'CHECKED_IN']):
     """
@@ -314,170 +314,189 @@ def fba_inbound_shipments_previous_days(account, days:int=365, shipmentStatusLis
 
     return shipments
 
-
-def fba_get_shipment_by_id(shipment_id, account, **kwargs):
+def fba_get_shipment_items_by_shipment_id(account, shipment_id, **kwargs):
     """
-    Fetches details of a specific shipment by ID from FBA.
+    Fetches shipment items for a given shipment ID from FBA.
     """
     # Get credentials and marketplace from the account
     credentials = get_credentials_from_account(account)
     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
-    # Get Shipment
+    # Get Shipment Items
     fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
 
     @throttle_retry()
-    def get_shipment():
-        return fba.get_shipments_by_id(shipment_id, **kwargs)
+    def get_shipment_items():
+        return fba.shipment_items_by_shipment(shipment_id=shipment_id, **kwargs)
 
-    response = get_shipment()
+    shipment_items = get_shipment_items().payload.get('ItemData', [])
 
-    if response.payload:
-        return response.payload.get('ShipmentData', [])[0] if response.payload.get('ShipmentData') else {}
-    else:
-        logging.error("No shipment found or error occurred.")
-        return {}
-
-def get_or_create_shipping_cost_product(env, account):
-
-    delivery_product = env['product.product'].search([('name', '=', 'Shipping Cost')], limit=1)
-
-    # Or create a new one if it doesn't exist
-    if not delivery_product:
-        delivery_product = env['product.product'].create({
-            'name': 'Shipping Cost',
-            'type': 'service',
-            'invoice_policy': 'order', # Or 'delivery' depending on your invoicing policy
-            'list_price': 0.0,
-            'standard_price': 0.0,
-            'taxes_id': [(6, 0, [])],  # Assuming no taxes are applied
-            'purchase_taxes_id': [(6, 0, [])],  # Assuming no taxes are applied
-        })
-
-    return delivery_product
+    return shipment_items
 
 
+# def fba_get_shipment_by_id(shipment_id, account, **kwargs):
+#     """
+#     Fetches details of a specific shipment by ID from FBA.
+#     """
+#     # Get credentials and marketplace from the account
+#     credentials = get_credentials_from_account(account)
+#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
-def get_fba_inventory_ledger_summary(account, aggregatedByTimePeriod="DAILY", dataStartTime=None, dataEndTime=None, check_delay: int = 10, debug: bool = False):
-    credentials = get_credentials_from_account(account)
-    sp_marketplace = sp_marketplace_mapper(account.marketplace)
+#     # Get Shipment
+#     fba = FulfillmentInbound(credentials=credentials, marketplace=sp_marketplace)
 
-    # Set default time range if not provided
-    if dataStartTime is None:
-        # Current time - 5 years
-        dataStartTime = (datetime.now(timezone.utc) - timedelta(days=5 * 30)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+#     @throttle_retry()
+#     def get_shipment():
+#         return fba.get_shipments_by_id(shipment_id, **kwargs)
 
-    if dataEndTime is None:
-        # Get current time in UTC and format it
-        dataEndTime = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S+00:00")
+#     response = get_shipment()
 
-    # Get Inventory Report
-    report_type = ReportType.GET_LEDGER_SUMMARY_VIEW_DATA
-    report = Reports(credentials=credentials, marketplace=sp_marketplace)
+#     if response.payload:
+#         return response.payload.get('ShipmentData', [])[0] if response.payload.get('ShipmentData') else {}
+#     else:
+#         logging.error("No shipment found or error occurred.")
+#         return {}
 
-    report_response = report.create_report(reportType=report_type, dataStartTime=dataStartTime, dataEndTime=dataEndTime, 
-                                           reportOptions={"aggregateByLocation":"COUNTRY","aggregatedByTimePeriod":aggregatedByTimePeriod})
-    report_id = report_response.payload.get('reportId')
+# def get_or_create_shipping_cost_product(env, account):
 
-    # Wait for the report to be generated
-    report_data = None
-    wait_for_report = True
+#     delivery_product = env['product.product'].search([('name', '=', 'Shipping Cost')], limit=1)
 
-    if debug:
-        logging.info(f"Getting Inventory Ledger Summary Feed. Waiting for report to process...")
-        logging.info(f"Report ID: {report_id}")
+#     # Or create a new one if it doesn't exist
+#     if not delivery_product:
+#         delivery_product = env['product.product'].create({
+#             'name': 'Shipping Cost',
+#             'type': 'service',
+#             'invoice_policy': 'order', # Or 'delivery' depending on your invoicing policy
+#             'list_price': 0.0,
+#             'standard_price': 0.0,
+#             'taxes_id': [(6, 0, [])],  # Assuming no taxes are applied
+#             'purchase_taxes_id': [(6, 0, [])],  # Assuming no taxes are applied
+#         })
 
-    while wait_for_report:
-        time.sleep(check_delay)
-        get_report = report.get_report(reportId=report_id)
-        if get_report.payload.get('processingStatus') == 'DONE':
-            wait_for_report = False
-            report_document_id = get_report.payload.get('reportDocumentId')
-            report_document = report.get_report_document(reportDocumentId=report_document_id)
-
-            # Get the report data from the URL, and decode it to a tab separated string
-            compressed = requests.get(report_document.payload.get('url')).content
-            decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read().decode('utf-8')
-            # Convert the tab separated string to a list of dictionaries
-            lines = decompressed.split('\n')
-            headers = lines[0].split('\t')
-            reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
-            report_data = [dict(row) for row in reader]
-
-        elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
-            if debug:
-                logging.info('Report processing in progress')
-
-        elif get_report.payload.get('processingStatus') == 'IN_QUEUE':
-            if debug:
-                logging.info('Report processing in queue')
-
-        elif get_report.payload.get('processingStatus') == 'FATAL':
-            if debug:
-                logging.error('Report processing failed')
-            return
-
-    return report_data
+#     return delivery_product
 
 
-def get_fba_inventory_ledger_details(account, dataStartTime=None, dataEndTime=None, check_delay: int = 10, debug: bool = False):
 
-    credentials = get_credentials_from_account(account)
-    sp_marketplace = sp_marketplace_mapper(account.marketplace)
+# def get_fba_inventory_ledger_summary(account, aggregatedByTimePeriod="DAILY", dataStartTime=None, dataEndTime=None, check_delay: int = 10, debug: bool = False):
+#     credentials = get_credentials_from_account(account)
+#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
-    # Set default time range if not provided
-    if dataStartTime is None:
-        # Current time - 5 years
-        dataStartTime = (datetime.now(timezone.utc) - timedelta(days=5 * 365)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    if dataEndTime is None:
-        # Get current time and format it
-        dataEndTime = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+#     # Set default time range if not provided
+#     if dataStartTime is None:
+#         # Current time - 5 years
+#         dataStartTime = (datetime.now(timezone.utc) - timedelta(days=5 * 30)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
-    # Get Inventory Report
-    report_type = ReportType.GET_LEDGER_DETAIL_VIEW_DATA
-    report = Reports(credentials=credentials, marketplace=sp_marketplace)
+#     if dataEndTime is None:
+#         # Get current time in UTC and format it
+#         dataEndTime = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
-    report_response = report.create_report(reportType=report_type, dataStartTime=dataStartTime, dataEndTime=dataEndTime)
-    report_id = report_response.payload.get('reportId')
+#     # Get Inventory Report
+#     report_type = ReportType.GET_LEDGER_SUMMARY_VIEW_DATA
+#     report = Reports(credentials=credentials, marketplace=sp_marketplace)
 
-    # Wait for the report to be generated
-    report_data = None
-    wait_for_report = True
+#     report_response = report.create_report(reportType=report_type, dataStartTime=dataStartTime, dataEndTime=dataEndTime, 
+#                                            reportOptions={"aggregateByLocation":"COUNTRY","aggregatedByTimePeriod":aggregatedByTimePeriod})
+#     report_id = report_response.payload.get('reportId')
 
-    if debug:
-        logging.info(f"Getting Inventory Ledger Details Feed. Waiting for report to process...")
-        logging.info(f"Report ID: {report_id}")
+#     # Wait for the report to be generated
+#     report_data = None
+#     wait_for_report = True
 
-    while wait_for_report:
-        time.sleep(check_delay)
-        get_report = report.get_report(reportId=report_id)
-        if get_report.payload.get('processingStatus') == 'DONE':
-            wait_for_report = False
-            report_document_id = get_report.payload.get('reportDocumentId')
-            report_document = report.get_report_document(reportDocumentId=report_document_id)
+#     if debug:
+#         logging.info(f"Getting Inventory Ledger Summary Feed. Waiting for report to process...")
+#         logging.info(f"Report ID: {report_id}")
 
-            # Get the report data from the URL, and decode it to a tab separated string
-            compressed = requests.get(report_document.payload.get('url')).content
-            decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read().decode('utf-8')
-            # Convert the tab separated string to a list of dictionaries
-            lines = decompressed.split('\n')
-            headers = lines[0].split('\t')
-            reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
-            report_data = [dict(row) for row in reader]
+#     while wait_for_report:
+#         time.sleep(check_delay)
+#         get_report = report.get_report(reportId=report_id)
+#         if get_report.payload.get('processingStatus') == 'DONE':
+#             wait_for_report = False
+#             report_document_id = get_report.payload.get('reportDocumentId')
+#             report_document = report.get_report_document(reportDocumentId=report_document_id)
 
-        elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
-            if debug:
-                logging.info('Report processing in progress')
+#             # Get the report data from the URL, and decode it to a tab separated string
+#             compressed = requests.get(report_document.payload.get('url')).content
+#             decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read().decode('utf-8')
+#             # Convert the tab separated string to a list of dictionaries
+#             lines = decompressed.split('\n')
+#             headers = lines[0].split('\t')
+#             reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
+#             report_data = [dict(row) for row in reader]
 
-        elif get_report.payload.get('processingStatus') == 'IN_QUEUE':
-            if debug:
-                logging.info('Report processing in queue')
+#         elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
+#             if debug:
+#                 logging.info('Report processing in progress')
 
-        elif get_report.payload.get('processingStatus') == 'FATAL':
-            if debug:
-                logging.error('Report processing failed')
-            return
+#         elif get_report.payload.get('processingStatus') == 'IN_QUEUE':
+#             if debug:
+#                 logging.info('Report processing in queue')
 
-    return report_data
+#         elif get_report.payload.get('processingStatus') == 'FATAL':
+#             if debug:
+#                 logging.error('Report processing failed')
+#             return
+
+#     return report_data
+
+
+# def get_fba_inventory_ledger_details(account, dataStartTime=None, dataEndTime=None, check_delay: int = 10, debug: bool = False):
+
+#     credentials = get_credentials_from_account(account)
+#     sp_marketplace = sp_marketplace_mapper(account.marketplace)
+
+#     # Set default time range if not provided
+#     if dataStartTime is None:
+#         # Current time - 5 years
+#         dataStartTime = (datetime.now(timezone.utc) - timedelta(days=5 * 365)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+#     if dataEndTime is None:
+#         # Get current time and format it
+#         dataEndTime = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+#     # Get Inventory Report
+#     report_type = ReportType.GET_LEDGER_DETAIL_VIEW_DATA
+#     report = Reports(credentials=credentials, marketplace=sp_marketplace)
+
+#     report_response = report.create_report(reportType=report_type, dataStartTime=dataStartTime, dataEndTime=dataEndTime)
+#     report_id = report_response.payload.get('reportId')
+
+#     # Wait for the report to be generated
+#     report_data = None
+#     wait_for_report = True
+
+#     if debug:
+#         logging.info(f"Getting Inventory Ledger Details Feed. Waiting for report to process...")
+#         logging.info(f"Report ID: {report_id}")
+
+#     while wait_for_report:
+#         time.sleep(check_delay)
+#         get_report = report.get_report(reportId=report_id)
+#         if get_report.payload.get('processingStatus') == 'DONE':
+#             wait_for_report = False
+#             report_document_id = get_report.payload.get('reportDocumentId')
+#             report_document = report.get_report_document(reportDocumentId=report_document_id)
+
+#             # Get the report data from the URL, and decode it to a tab separated string
+#             compressed = requests.get(report_document.payload.get('url')).content
+#             decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read().decode('utf-8')
+#             # Convert the tab separated string to a list of dictionaries
+#             lines = decompressed.split('\n')
+#             headers = lines[0].split('\t')
+#             reader = csv.DictReader(StringIO(decompressed), delimiter='\t')
+#             report_data = [dict(row) for row in reader]
+
+#         elif get_report.payload.get('processingStatus') == 'IN_PROGRESS':
+#             if debug:
+#                 logging.info('Report processing in progress')
+
+#         elif get_report.payload.get('processingStatus') == 'IN_QUEUE':
+#             if debug:
+#                 logging.info('Report processing in queue')
+
+#         elif get_report.payload.get('processingStatus') == 'FATAL':
+#             if debug:
+#                 logging.error('Report processing failed')
+#             return
+
+#     return report_data
 
 
