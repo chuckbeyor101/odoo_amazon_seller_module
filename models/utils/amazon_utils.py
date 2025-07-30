@@ -170,7 +170,7 @@ def get_fba_inventory_summary_by_sku(seller_sku, account):
     return None
     
 
-def get_orders_recently_updated(account, days:int=30, **kwargs):
+def get_orders_recently_updated(account, days:int=365, **kwargs):
     credentials = get_credentials_from_account(account)
     sp_marketplace = sp_marketplace_mapper(account.marketplace)
 
@@ -256,7 +256,7 @@ def awd_get_inbound_shipment_details(account, shipment_id, **kwargs):
         return {}
 
 
-def fba_inbound_shipments_previous_days(account, days:int=365, shipmentStatusList:list=['WORKING', 'SHIPPED', 'RECEIVING', 'CANCELLED', 'DELETED', 'CLOSED', 'ERROR', 'IN_TRANSIT', 'DELIVERED', 'CHECKED_IN']):
+def fba_inbound_shipments_previous_days(account, days:int=730, shipmentStatusList:list=['WORKING', 'SHIPPED', 'RECEIVING', 'CANCELLED', 'DELETED', 'CLOSED', 'ERROR', 'IN_TRANSIT', 'DELIVERED', 'CHECKED_IN']):
     """
     Fetches a list of inbound shipments from FBA.
     """
