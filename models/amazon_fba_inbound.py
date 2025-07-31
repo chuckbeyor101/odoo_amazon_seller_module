@@ -65,10 +65,10 @@ class AmazonFBAInbound(models.Model):
             return
         
         for shipment in inbound_shipment_list:
-            self.import_fba_inbound_shipment(account, shipment, fba_inbound_loc)
+            self.import_fba_inbound_shipment(account, shipment, fba_inbound_loc, fba_wh)
 
 
-    def import_fba_inbound_shipment(self, account, shipment, fba_inbound_loc):
+    def import_fba_inbound_shipment(self, account, shipment, fba_inbound_loc, fba_wh):
 
         shipment_id = shipment.get('ShipmentId')
         transfer_name = f'{shipment_id}'
@@ -83,6 +83,7 @@ class AmazonFBAInbound(models.Model):
         ], limit=1)
 
         if existing_pick:
+            self.check_for_cancelled_fba_inbound_shipment(existing_pick, shipment, transfer_name, fba_wh)
             _logger.debug('FBA inbound shipment %s already exists as a stock picking', transfer_name)
             return
 
@@ -221,3 +222,49 @@ class AmazonFBAInbound(models.Model):
             })
 
         return fba_partner_loc
+
+
+    def check_for_cancelled_fba_inbound_shipment(self, existing_pick, shipment, transfer_name, fba_wh):
+        if shipment.get('ShipmentStatus') == 'CANCELLED':
+
+            return_name = f'Cancelled Shipment {transfer_name}'
+
+            # See if we already have a return picking for this shipment
+            existing_return_pick = self.env['stock.picking'].search([
+                ('origin', '=', return_name),
+            ], limit=1)
+
+            if existing_return_pick:
+                _logger.info('Return picking for cancelled shipment %s already exists. Skipping creation.', transfer_name)
+                return
+
+            # return the shipment
+            _logger.info('FBA inbound shipment %s is cancelled. Reverting stock moves.', transfer_name)
+            
+            # Prepare values for the return picking
+            return_picking_vals = {
+                'picking_type_id': fba_wh.out_type_id.id,  # Use the outbound picking type of the warehouse
+                'location_id': existing_pick.location_dest_id.id,  # Destination of original picking becomes source for return
+                'location_dest_id': existing_pick.location_id.id,  # Source of original picking becomes destination for return
+                'origin': return_name,
+                'partner_id': existing_pick.partner_id.id,
+            }
+
+            # Create the return picking
+            return_picking = self.env['stock.picking'].create(return_picking_vals)
+
+            # Create return moves for each original move line
+            for move_line in existing_pick.move_ids:
+                return_move_vals = {
+                    'product_id': move_line.product_id.id,
+                    'product_uom_qty': move_line.product_uom_qty,
+                    'product_uom': move_line.product_uom.id,
+                    'location_id': move_line.location_dest_id.id,  # Destination of original move becomes source for return move
+                    'location_dest_id': move_line.location_id.id,  # Source of original move becomes destination for return move
+                    'picking_id': return_picking.id,
+                    'name': 'Return: ' + move_line.product_id.name,
+                }
+                self.env['stock.move'].create(return_move_vals)
+
+            # Validate the return picking (optional, depending on your workflow)
+            return_picking.button_validate()

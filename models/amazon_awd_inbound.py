@@ -215,3 +215,7 @@ class AmazonAWDInbound(models.Model):
             })
 
         return awd_transit_loc
+    
+
+
+    
