@@ -122,40 +122,40 @@ class AmazonAWDInbound(models.Model):
 
         moves_queue = []
         for item in shipment_details.get('shipmentContainerQuantities', []):
-                count = item.get('count')
+                carton_count = item.get('count')
                 asin = item.get('distributionPackage', {}).get('contents', {}).get('products', [{}])[0].get('attributes', {})[0].get('value')
-                item_qty = item.get('distributionPackage', {}).get('contents', {}).get('products', [{}])[0].get('quantity')
+                carton_item_qty = item.get('distributionPackage', {}).get('contents', {}).get('products', [{}])[0].get('quantity')
+                total_item_qty = carton_item_qty * carton_count
 
-                if not asin or not count or not item_qty:
+                if not asin or not carton_count or not carton_item_qty:
                     # Stop processing this transfer. Something is wrong with the shipment
                     _logger.warning('Skipping item in AWD inbound shipment %s due to missing ASIN, count, or quantity', shipment.get('shipmentId'))
                     return
 
-                for i in range(count):
-                    # Create a stock move for each item in the shipment
-                    product = self.env['product.product'].search([('amazon_asin', '=', asin)], limit=1)
+                # Create a stock move for each item in the shipment
+                product = self.env['product.product'].search([('amazon_asin', '=', asin)], limit=1)
 
-                    if not product:
-                        # Stop processing this transfer. Something is wrong with the shipment
-                        _logger.warning(f'Skipping shipment {transfer_name} because product with asin {asin} not found.')
-                        return  
-                    
-                    # See if we should skip inventory without cost
-                    if account.skip_inventory_when_no_product_cost and not product.standard_price:
-                        _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} has no cost set.')
-                        return
-                    
-                    # if we should skip inventory not using AVCO
-                    if account.skip_inventory_not_avco and product.cost_method != 'average':
-                        _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} is not using AVCO.')
-                        continue
+                if not product:
+                    # Stop processing this transfer. Something is wrong with the shipment
+                    _logger.warning(f'Skipping shipment {transfer_name} because product with asin {asin} not found.')
+                    return  
+                
+                # See if we should skip inventory without cost
+                if account.skip_inventory_when_no_product_cost and not product.standard_price:
+                    _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} has no cost set.')
+                    return
+                
+                # if we should skip inventory not using AVCO
+                if account.skip_inventory_not_avco and product.cost_method != 'average':
+                    _logger.warning(f'Skipping shipment {transfer_name} because product {product.name} is not using AVCO.')
+                    continue
 
                 delivery_vals = {
                     'name': f"AWD Inbound {shipment.get('shipmentId')} - {item.get('sku')}",
                     'product_id': product.id,
-                    'product_uom_qty': item_qty,
-                    'quantity': item_qty,
-                    'availability': item_qty,
+                    'product_uom_qty': total_item_qty,
+                    'quantity': total_item_qty,
+                    'availability': total_item_qty,
                     'product_uom': self.env.ref('uom.product_uom_unit').id,
                     'location_id': from_warehouse_location.id,
                     'location_dest_id': awd_transit_loc.id,
@@ -164,9 +164,9 @@ class AmazonAWDInbound(models.Model):
                 reciept_move_vals = {
                     'name': f"AWD Inbound {shipment.get('shipmentId')} - {item.get('sku')}",
                     'product_id': product.id,
-                    'product_uom_qty': item_qty,
-                    'quantity': item_qty,
-                    'availability': item_qty,
+                    'product_uom_qty': total_item_qty,
+                    'quantity': total_item_qty,
+                    'availability': total_item_qty,
                     'product_uom': self.env.ref('uom.product_uom_unit').id,
                     'location_id': awd_transit_loc.id,
                     'location_dest_id': awd_inbound_loc.id,
