@@ -62,6 +62,13 @@ class AmazonFBAInventory(models.Model):
         fba_wh, fba_inbound_loc, fba_stock_loc, fba_reserved_loc, fba_researching_loc, fba_unfulfillable_loc = self.get_fba_warehouse()
 
         for product in product_list:
+            # Get FBA inventory for each product by summing each msku's quantities
+            amazon_msku_list = product.amazon_msku_ids
+
+            if not amazon_msku_list:
+                _logger.debug('No Amazon MSKUs found for product: %s', product.name)
+                continue
+
             # See if we should skip inventory without cost
             if amz_account.skip_inventory_when_no_product_cost and not product.standard_price:
                 _logger.warning('Skipping inventory update for product %s because it has no cost', product.name)
@@ -70,13 +77,6 @@ class AmazonFBAInventory(models.Model):
             # if we should skip inventory not using AVCO
             if amz_account.skip_inventory_not_avco and product.cost_method != 'average':
                 _logger.warning('Skipping inventory update for product %s because it is not using AVCO', product.name)
-                continue
-
-            # Get FBA inventory for each product by summing each msku's quantities
-            amazon_msku_list = product.amazon_msku_ids
-
-            if not amazon_msku_list:
-                _logger.debug('No Amazon MSKUs found for product: %s', product.name)
                 continue
 
             total_fulfillable_quantity = 0
