@@ -51,7 +51,7 @@ class AmazonFBAInventory(models.Model):
     @api.model
     def _update_account_fba_inventory(self, amz_account):
         # Get all products
-        product_list = self.env['product.template'].search([])
+        product_list = self.env['product.template'].search(['amazon_asin', '!=', False])
 
         if not product_list:
             _logger.warning('No products found for account %s', amz_account.name)
