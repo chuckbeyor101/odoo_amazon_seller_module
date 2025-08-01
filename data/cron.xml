@@ -68,4 +68,13 @@
         <field name="interval_type">hours</field>
         <field name="active">True</field>
     </record>
+    <record id="ir_cron_amazon_listing_fees" model="ir.cron">
+        <field name="name">Amazon Seller - Import Listing Fees</field>
+        <field name="model_id" ref="model_amazon_listing_fees"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_get_listing_fees()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

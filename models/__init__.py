@@ -22,5 +22,6 @@ from . import amazon_fba_inbound
 from . import amazon_orders
 from . import amazon_overview
 from . import stock_quant
+from . import amazon_listing_fees
 
 

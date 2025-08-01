@@ -56,6 +56,11 @@ class ProductTemplate(models.Model):
     amazon_msku_display = fields.Char(string='MSKU List', compute='_compute_sku_display', store=True)
     amazon_fnsku_display = fields.Char(string='FNSKU List', compute='_compute_sku_display', store=True)
     
+    # Amazon estimated fees
+    amazon_est_fba_fees = fields.Float(string='Estimated FBA Order Fulfillment Fees', help='Estimated Amazon fees for FBA fulfillment', default=0.0)
+    amazon_est_fbm_fees = fields.Float(string='Estimated FBM Fees', help='Estimated Amazon fees for FBM orders', default=0.0)
+
+
     @api.depends('amazon_msku_ids.name', 'amazon_fnsku_ids.name')
     def _compute_sku_display(self):
         for record in self:

@@ -18,3 +18,4 @@ access_amazon_awd_inbound_user,Amazon AWD Inbound User,model_amazon_awd_inbound,
 access_amazon_awd_inbound_manager,Amazon AWD Inbound Manager,model_amazon_awd_inbound,stock.group_stock_manager,1,1,1,1
 access_amazon_fba_inbound_user,Amazon FBA Inbound User,model_amazon_fba_inbound,base.group_user,1,0,0,0
 access_amazon_fba_inbound_manager,Amazon FBA Inbound Manager,model_amazon_fba_inbound,stock.group_stock_manager,1,1,1,1
+access_amazon_listing_fees,access_amazon_listing_fees,model_amazon_listing_fees,base.group_user,1,1,1,1

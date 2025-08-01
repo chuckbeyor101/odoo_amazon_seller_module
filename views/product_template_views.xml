@@ -27,9 +27,13 @@
                                 <field name="amazon_asin"/>
                             </group>
                         </group>
-                        <group string="Amazon SKUs" name="amazon_skus" col="2">
+                        <group string="" name="amazon_skus" col="3">
+                            <group name="fees_group" string="Est Listing Fees">
+                                <field name="amazon_est_fba_fees" readonly="1"/>
+                                <field name="amazon_est_fbm_fees" readonly="1"/>
+                            </group>
                             <group name="msku_group" string="MSKUs">
-                                <field name="amazon_msku_display" readonly="1"/>
+                                <!-- <field name="amazon_msku_display" readonly="1"/> -->
                                 <field name="amazon_msku_ids" readonly="1" nolabel="1">
                                     <list>
                                         <field name="name"/>
@@ -37,7 +41,7 @@
                                 </field>
                             </group>
                             <group name="fnsku_group" string="FNSKUs">
-                                <field name="amazon_fnsku_display" readonly="1"/>
+                                <!-- <field name="amazon_fnsku_display" readonly="1"/> -->
                                 <field name="amazon_fnsku_ids" readonly="1" nolabel="1">
                                     <list>
                                         <field name="name"/>

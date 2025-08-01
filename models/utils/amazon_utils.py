@@ -17,7 +17,7 @@ import csv
 
 from sp_api.base import Marketplaces, ReportType
 from datetime import datetime, timezone, timedelta
-from sp_api.api import Reports, AmazonWarehousingAndDistribution, Inventories, CatalogItems, FulfillmentInbound, Orders
+from sp_api.api import Reports, AmazonWarehousingAndDistribution, Inventories, CatalogItems, FulfillmentInbound, Orders, ProductFees
 from sp_api.util import throttle_retry, load_all_pages
 
 import time
@@ -303,6 +303,24 @@ def fba_get_shipment_items_by_shipment_id(account, shipment_id, **kwargs):
     shipment_items = get_shipment_items().payload.get('ItemData', [])
 
     return shipment_items
+
+@throttle_retry()
+def get_asin_listing_fees(account, asin, price, currency='USD', shipping_price=0, is_fba=True, ):
+    # Get credentials and marketplace from the account
+    credentials = get_credentials_from_account(account)
+    sp_marketplace = sp_marketplace_mapper(account.marketplace)
+
+    product_fees = ProductFees(credentials=credentials, marketplace=sp_marketplace)
+    
+    fees = product_fees.get_product_fees_estimate_for_asin(
+        asin=asin, price=price, currency=currency, shipping_price=shipping_price, is_fba=is_fba
+    )
+
+    if not fees.payload:
+        logging.error(f"Failed to fetch fees for ASIN {asin}. Response: {fees}")
+        return {}
+
+    return fees.payload
 
 
 # def fba_list_shipment_items_previous_days(account, days:int=365, **kwargs):

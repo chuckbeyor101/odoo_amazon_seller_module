@@ -78,13 +78,15 @@
                         </group>
                         <group name="fba_order_settings" string="FBA Order Settings">
                             <field name="import_fba_orders"/>
+                            <field name="get_fba_estimated_fees"/>
                             <field name="consolidated_fba_order_customer"/>
                             <field name="import_fba_order_tax"/>
                             <field name="import_fba_order_shipping"/>
-                            <field name="invoice_fba_orders"/>
+                            <!-- <field name="invoice_fba_orders"/> -->
                         </group>
                         <group name="fbm_order_settings" string="FBM Order Settings">
                             <!-- <field name="import_fbm_orders"/> -->
+                            <!--<field name="get_fbm_estimated_fees"/>-->
                         </group>
                         
                     </group>

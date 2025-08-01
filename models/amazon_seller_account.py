@@ -90,6 +90,12 @@ class AmazonSellerAccount(models.Model):
         help='Enable automatic import of FBA inventory from Amazon. This will create an FBA warehouse and locations in Odoo, and import the FBA inventory quantities for each product.'
     )
 
+    get_fba_estimated_fees = fields.Boolean(
+        string='Get FBA Estimated Fees',
+        default=False,
+        help='Enable automatic fetching of estimated fees for FBA orders. This will fetch the estimated fees for each FBA order and store them in the order lines. This is useful for tracking the costs associated with FBA orders.'
+    )
+
     import_fba_inbound_shipments = fields.Boolean(
         string='Import FBA Inbound Shipments',
         default=False,
@@ -132,6 +138,12 @@ class AmazonSellerAccount(models.Model):
         string='Import FBM Orders',
         default=False,
         help='Enable automatic import of FBM orders from Amazon. This will create sales orders in Odoo for each FBM order.'
+    )
+
+    get_fbm_estimated_fees = fields.Boolean(
+        string='Get FBM Estimated Fees',
+        default=False,
+        help='Enable automatic fetching of estimated fees for FBM orders. This will fetch the estimated fees for each FBM order and store them in the order lines. This is useful for tracking the costs associated with FBM orders.'
     )
 
     # AWD Settings
