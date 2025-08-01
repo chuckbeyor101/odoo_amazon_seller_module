@@ -103,13 +103,13 @@ class AmazonFBAInventory(models.Model):
                 total_unfulfillable_quantity += fba_inventory.get('inventoryDetails',{}).get('unfulfillableQuantity', {}).get('totalUnfulfillableQuantity', 0)
                 # total_future_supply_quantity += fba_inventory.get('inventoryDetails',{}).get('futureSupplyQuantity', 0)
 
-                date_string = datetime.now().strftime('%Y-%m-%d')
-                self.fba_inventory_adjustment(product, fba_inbound_loc, total_inbound_quantity, fba_wh, f"FBA Inventory Sync (Inbound): {amazon_msku.name}, {date_string}")
-                self.fba_inventory_adjustment(product, fba_stock_loc, total_fulfillable_quantity, fba_wh, f"FBA Inventory Sync (Stock): {amazon_msku.name}, {date_string}")
-                self.fba_inventory_adjustment(product, fba_reserved_loc, total_reserved_quantity, fba_wh, f"FBA Inventory Sync (Reserved): {amazon_msku.name}, {date_string}")
-                self.fba_inventory_adjustment(product, fba_researching_loc, total_researching_quantity, fba_wh, f"FBA Inventory Sync (Researching): {amazon_msku.name}, {date_string}")
-                self.fba_inventory_adjustment(product, fba_unfulfillable_loc, total_unfulfillable_quantity, fba_wh, f"FBA Inventory Sync (Unfulfillable): {amazon_msku.name}, {date_string}")
-                #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities
+            date_string = datetime.now().strftime('%Y-%m-%d')
+            self.fba_inventory_adjustment(product, fba_inbound_loc, total_inbound_quantity, fba_wh, f"FBA Inventory Sync (Inbound): {amazon_msku.name}, {date_string}")
+            self.fba_inventory_adjustment(product, fba_stock_loc, total_fulfillable_quantity, fba_wh, f"FBA Inventory Sync (Stock): {amazon_msku.name}, {date_string}")
+            self.fba_inventory_adjustment(product, fba_reserved_loc, total_reserved_quantity, fba_wh, f"FBA Inventory Sync (Reserved): {amazon_msku.name}, {date_string}")
+            self.fba_inventory_adjustment(product, fba_researching_loc, total_researching_quantity, fba_wh, f"FBA Inventory Sync (Researching): {amazon_msku.name}, {date_string}")
+            self.fba_inventory_adjustment(product, fba_unfulfillable_loc, total_unfulfillable_quantity, fba_wh, f"FBA Inventory Sync (Unfulfillable): {amazon_msku.name}, {date_string}")
+            #TODO: Not sure if we should set future supply quantity, or if its already considered in the other quantities
 
 
     def fba_inventory_adjustment(self, product, location, final_quantity, fba_wh, name):
